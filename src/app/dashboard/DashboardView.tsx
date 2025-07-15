@@ -135,7 +135,7 @@ export default function DashboardView({ user, balance, totalIncomes, totalExpens
                   <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100}>
                     {chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
                   </Pie>
-                  <Tooltip formatter={(value) => [formatCurrency(value as number), "Total"]} />
+                  <Tooltip formatter={(value: number | string) => [formatCurrency(value as number), "Total"]} />
                   <Legend iconSize={10} />
                 </PieChart>
               </ResponsiveContainer>
