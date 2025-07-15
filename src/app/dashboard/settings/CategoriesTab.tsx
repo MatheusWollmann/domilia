@@ -7,21 +7,14 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Edit, Trash2, Loader2, X, FolderKanban } from 'lucide-react';
-import { type Category } from './SettingsView'; // Importa o tipo
+import { type Category } from './SettingsView';
 
-// Schema de validação
 const categorySchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   type: z.enum(['expense', 'income']),
   icon: z.string().optional(),
   color: z.string().optional(),
-  budget: z.string()
-    .optional()
-    .refine((val) => {
-      if (!val || val.trim() === '') return true;
-      const num = Number(val.replace(',', '.'));
-      return !isNaN(num) && num >= 0;
-    }, { message: 'O orçamento deve ser um número positivo.' }),
+  budget: z.string().optional().refine((val) => !val || !isNaN(parseFloat(val.replace(',', '.'))), { message: 'Orçamento inválido.' }),
 });
 
 type CategoryFormData = z.infer<typeof categorySchema>;
@@ -38,7 +31,6 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
-    defaultValues: { name: '', type: 'expense', icon: '', color: '#6B7280', budget: '' }
   });
 
   const watchedType = watch('type');
@@ -46,13 +38,7 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
   const openModal = (category: Category | null = null) => {
     setEditingCategory(category);
     if (category) {
-      reset({
-        name: category.name,
-        type: category.type,
-        icon: category.icon || '',
-        color: category.color || '#6B7280',
-        budget: category.budget != null ? String(category.budget).replace('.', ',') : '',
-      });
+      reset({ name: category.name, type: category.type, icon: category.icon || '', color: category.color || '#6B7280', budget: category.budget != null ? String(category.budget).replace('.', ',') : '', });
     } else {
       reset({ name: '', type: 'expense', icon: '', color: '#6B7280', budget: '' });
     }
@@ -64,13 +50,7 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
   const onSubmit: SubmitHandler<CategoryFormData> = async (data) => {
     try {
       const budgetAsNumber = data.budget && data.budget.trim() !== '' ? Number(data.budget.replace(',', '.')) : null;
-      const dataToSave = {
-        name: data.name,
-        type: data.type,
-        icon: data.icon,
-        color: data.color,
-        budget: data.type === 'expense' ? budgetAsNumber : null,
-      };
+      const dataToSave = { name: data.name, type: data.type, icon: data.icon, color: data.color, budget: data.type === 'expense' ? budgetAsNumber : null, };
 
       if (editingCategory) {
         const { data: updatedCategory, error } = await supabase.from('categories').update(dataToSave).eq('id', editingCategory.id).select().single();
@@ -82,7 +62,8 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
         setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
       }
       closeModal();
-    } catch (error) {
+    } catch (e) {
+      console.error(e);
       alert('Não foi possível salvar a categoria.');
     }
   };
@@ -105,8 +86,7 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
     <div>
         <div className="flex justify-end mb-4">
             <button onClick={() => openModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm">
-                <PlusCircle size={20} />
-                Nova Categoria
+                <PlusCircle size={20} /> Nova Categoria
             </button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -116,15 +96,8 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
             {expenseCategories.length > 0 ? expenseCategories.map(cat => (
               <div key={cat.id} className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex flex-col">
-                    <span className="flex items-center gap-3 font-medium">
-                        <span className="text-xl">{cat.icon || '📁'}</span>
-                        {cat.name}
-                    </span>
-                    {cat.budget != null && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-9">
-                            Orçamento: {formatCurrency(cat.budget)}
-                        </span>
-                    )}
+                    <span className="flex items-center gap-3 font-medium"><span className="text-xl">{cat.icon || '📁'}</span> {cat.name}</span>
+                    {cat.budget != null && (<span className="text-xs text-gray-500 dark:text-gray-400 ml-9">Orçamento: {formatCurrency(cat.budget)}</span>)}
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => openModal(cat)} className="p-2 text-gray-400 hover:text-indigo-600"><Edit size={16} /></button>
@@ -144,10 +117,7 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
           <div className="space-y-2">
             {incomeCategories.length > 0 ? incomeCategories.map(cat => (
               <div key={cat.id} className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <span className="flex items-center gap-3 font-medium">
-                  <span className="text-xl">{cat.icon || '📁'}</span>
-                  {cat.name}
-                </span>
+                <span className="flex items-center gap-3 font-medium"><span className="text-xl">{cat.icon || '📁'}</span>{cat.name}</span>
                 <div className="flex items-center gap-2">
                   <button onClick={() => openModal(cat)} className="p-2 text-gray-400 hover:text-indigo-600"><Edit size={16} /></button>
                   <button onClick={() => handleDelete(cat.id)} className="p-2 text-gray-400 hover:text-red-600"><Trash2 size={16} /></button>

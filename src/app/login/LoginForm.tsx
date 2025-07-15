@@ -22,19 +22,15 @@ export default function LoginForm() {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${location.origin}/auth/callback` },
-        });
-        if (error) throw error;
+        const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${location.origin}/auth/callback` }, });
+        if (signUpError) throw signUpError;
         alert('Cadastro realizado! Verifique seu e-mail para confirmar a conta.');
-        setIsSignUp(false); // Volta para a tela de login
+        setIsSignUp(false);
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
         router.push('/dashboard');
-        router.refresh(); // Importante para recarregar os dados do servidor
+        router.refresh();
       }
     } catch (err: any) {
       setError(err.message);
@@ -48,12 +44,8 @@ export default function LoginForm() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
             <Home className="mx-auto h-12 w-auto text-indigo-600" />
-            <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-              {isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}
-            </h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              Bem-vindo ao Domilia
-            </p>
+            <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">{isSignUp ? 'Crie sua conta' : 'Acesse sua conta'}</h2>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Bem-vindo ao Domilia</p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleAuthAction}>
           <div className="space-y-4 rounded-md bg-white dark:bg-gray-800 p-8 shadow-lg">
@@ -66,9 +58,7 @@ export default function LoginForm() {
               <input id="password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="input-style w-full" placeholder="Senha" />
             </div>
           </div>
-
           {error && <p className="text-center text-sm text-red-500">{error}</p>}
-
           <div>
             <button type="submit" disabled={loading} className="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 py-3 px-4 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50">
               {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? 'Cadastrar' : 'Entrar')}

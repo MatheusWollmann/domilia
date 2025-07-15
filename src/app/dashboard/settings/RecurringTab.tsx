@@ -7,7 +7,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Edit, Trash2, Loader2, X, Repeat } from 'lucide-react';
-import { type Category, type RecurringTransaction } from './SettingsView'; // Importa os tipos
+import { type Category, type RecurringTransaction } from './SettingsView';
 
 const recurringSchema = z.object({
     description: z.string().min(2, "A descrição é obrigatória."),
@@ -49,21 +49,9 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
   const openModal = (item: RecurringTransaction | null = null) => {
     setEditing(item);
     if (item) {
-        reset({
-            description: item.description,
-            amount: String(item.amount).replace('.', ','),
-            type: item.type,
-            category_id: item.category_id,
-            frequency: item.frequency,
-            day_of_month: item.day_of_month,
-            day_of_week: item.day_of_week,
-            start_date: item.start_date,
-        });
+        reset({ description: item.description, amount: String(item.amount).replace('.', ','), type: item.type, category_id: item.category_id, frequency: item.frequency, day_of_month: item.day_of_month, day_of_week: item.day_of_week, start_date: item.start_date, });
     } else {
-        reset({
-            description: '', amount: '', type: 'expense', category_id: '',
-            frequency: 'monthly', day_of_month: 1, day_of_week: undefined, start_date: new Date().toISOString().split('T')[0]
-        });
+        reset({ description: '', amount: '', type: 'expense', category_id: '', frequency: 'monthly', day_of_month: 1, day_of_week: undefined, start_date: new Date().toISOString().split('T')[0] });
     }
     setIsModalOpen(true);
   };
@@ -73,12 +61,7 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
   const onSubmit: SubmitHandler<RecurringFormData> = async (data) => {
     try {
         const amountAsNumber = parseFloat(data.amount.replace(',', '.'));
-        const dataToSave = {
-            ...data,
-            amount: amountAsNumber,
-            day_of_month: data.frequency === 'monthly' ? data.day_of_month : null,
-            day_of_week: data.frequency === 'weekly' ? data.day_of_week : null,
-        };
+        const dataToSave = { ...data, amount: amountAsNumber, day_of_month: data.frequency === 'monthly' ? data.day_of_month : null, day_of_week: data.frequency === 'weekly' ? data.day_of_week : null, };
 
         if (editing) {
             const { data: updated, error } = await supabase.from('recurring_transactions').update(dataToSave).eq('id', editing.id).select('*, categories(name, icon)').single();
@@ -90,7 +73,8 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
             setRecurring(prev => [...prev, created].sort((a,b) => a.description.localeCompare(b.description)));
         }
         closeModal();
-    } catch (error) {
+    } catch (e) {
+        console.error(e);
         alert("Não foi possível salvar a conta recorrente.");
     }
   };
@@ -111,8 +95,7 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
     <div>
       <div className="flex justify-end mb-4">
         <button onClick={() => openModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm">
-          <PlusCircle size={20} />
-          Nova Conta Recorrente
+          <PlusCircle size={20} /> Nova Conta Recorrente
         </button>
       </div>
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700">
@@ -137,7 +120,6 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                     <Repeat className="mx-auto h-12 w-12 opacity-50" />
                     <p className="mt-4">Nenhuma conta recorrente cadastrada.</p>
-                    <p className="text-sm">Adicione contas como aluguel, salários ou assinaturas.</p>
                 </div>
             )}
         </div>

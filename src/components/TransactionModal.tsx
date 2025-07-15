@@ -6,27 +6,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import { type User } from '@supabase/supabase-js';
-import { X, Save, Loader2, Repeat } from 'lucide-react';
+import { X, Loader2, Repeat } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
-export type Category = {
-  id: string;
-  name: string;
-  type: 'expense' | 'income';
-  icon?: string | null;
-};
-
-// Exportando o tipo Transaction para que outros componentes possam usá-lo
-export type Transaction = {
-  id: string;
-  description: string;
-  amount: number;
-  category_id: string;
-  date: string;
-  type: 'expense' | 'income';
-};
-
-type TransactionType = 'expense' | 'income';
+export type Category = { id: string; name: string; type: 'expense' | 'income'; icon?: string | null; };
+export type Transaction = { id: string; description: string; amount: number; category_id: string; date: string; type: 'expense' | 'income'; };
 
 const transactionSchema = z.object({
   description: z.string().min(2, 'A descrição é obrigatória.'),
@@ -45,7 +29,6 @@ const transactionSchema = z.object({
     return true;
 }, { message: "Especifique os detalhes da recorrência.", path: ["frequency"] });
 
-
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
 interface TransactionModalProps {
@@ -55,30 +38,15 @@ interface TransactionModalProps {
   user: User | null;
   expenseCategories: Category[];
   incomeCategories: Category[];
-  // Reintroduzindo a prop para edição
   transactionToEdit?: Transaction | null;
 }
 
-export default function TransactionModal({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  user,
-  expenseCategories,
-  incomeCategories,
-  transactionToEdit,
-}: TransactionModalProps) {
+export default function TransactionModal({ isOpen, onClose, onSuccess, user, expenseCategories, incomeCategories, transactionToEdit, }: TransactionModalProps) {
   const supabase = createClientComponentClient();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isEditMode = transactionToEdit != null;
 
-  const { 
-    register, 
-    handleSubmit, 
-    reset, 
-    watch,
-    formState: { errors, isSubmitting } 
-  } = useForm<TransactionFormData>({
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<TransactionFormData>({
     resolver: zodResolver(transactionSchema),
     defaultValues: { is_recurring: false, type: 'expense' }
   });
@@ -91,22 +59,9 @@ export default function TransactionModal({
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && transactionToEdit) {
-        // Popula o formulário para edição
-        reset({
-          description: transactionToEdit.description,
-          amount: String(transactionToEdit.amount).replace('.',','),
-          type: transactionToEdit.type,
-          category_id: transactionToEdit.category_id,
-          date: format(parseISO(transactionToEdit.date), 'yyyy-MM-dd'),
-          is_recurring: false, // Não permitimos editar uma transação normal para recorrente
-        });
+        reset({ description: transactionToEdit.description, amount: String(transactionToEdit.amount).replace('.',','), type: transactionToEdit.type, category_id: transactionToEdit.category_id, date: format(parseISO(transactionToEdit.date), 'yyyy-MM-dd'), is_recurring: false, });
       } else {
-        // Limpa o formulário para uma nova transação
-        reset({
-          description: '', amount: '', type: 'expense', category_id: '',
-          date: new Date().toISOString().split('T')[0], is_recurring: false,
-          frequency: undefined, day_of_month: undefined, day_of_week: undefined
-        });
+        reset({ description: '', amount: '', type: 'expense', category_id: '', date: new Date().toISOString().split('T')[0], is_recurring: false, frequency: undefined, day_of_month: undefined, day_of_week: undefined });
       }
       setErrorMessage(null);
     }
@@ -116,52 +71,25 @@ export default function TransactionModal({
     setErrorMessage(null);
     try {
       if (!user) throw new Error('Usuário não autenticado.');
-
       const amountAsNumber = parseFloat(data.amount.replace(',', '.'));
       
       if (isEditMode && transactionToEdit) {
-        // Lógica de ATUALIZAÇÃO para transações normais
         const tableName = data.type === 'expense' ? 'expenses' : 'incomes';
-        const { error } = await supabase.from(tableName).update({
-            description: data.description,
-            amount: amountAsNumber,
-            category_id: data.category_id,
-            date: data.date,
-        }).eq('id', transactionToEdit.id);
+        const { error } = await supabase.from(tableName).update({ description: data.description, amount: amountAsNumber, category_id: data.category_id, date: data.date, }).eq('id', transactionToEdit.id);
         if (error) throw error;
-
       } else if (data.is_recurring) {
-        // Lógica de CRIAÇÃO para transações recorrentes
-        const { error } = await supabase.from('recurring_transactions').insert({
-            user_id: user.id,
-            description: data.description,
-            amount: amountAsNumber,
-            type: data.type,
-            category_id: data.category_id,
-            frequency: data.frequency,
-            day_of_month: data.frequency === 'monthly' ? data.day_of_month : null,
-            day_of_week: data.frequency === 'weekly' ? data.day_of_week : null,
-            start_date: data.date,
-        });
+        const { error } = await supabase.from('recurring_transactions').insert({ user_id: user.id, description: data.description, amount: amountAsNumber, type: data.type, category_id: data.category_id, frequency: data.frequency, day_of_month: data.frequency === 'monthly' ? data.day_of_month : null, day_of_week: data.frequency === 'weekly' ? data.day_of_week : null, start_date: data.date, });
         if (error) throw error;
       } else {
-        // Lógica de CRIAÇÃO para transações normais
         const tableName = data.type === 'expense' ? 'expenses' : 'incomes';
-        const { error } = await supabase.from(tableName).insert({
-            user_id: user.id,
-            description: data.description,
-            amount: amountAsNumber,
-            category_id: data.category_id,
-            date: data.date,
-        });
+        const { error } = await supabase.from(tableName).insert({ user_id: user.id, description: data.description, amount: amountAsNumber, category_id: data.category_id, date: data.date, });
         if (error) throw error;
       }
-
       onSuccess();
       onClose();
-    } catch (error: any) {
-      console.error(`Erro ao salvar transação:`, error);
-      setErrorMessage(error.message || 'Ocorreu um erro inesperado.');
+    } catch (err: any) {
+      console.error(`Erro ao salvar transação:`, err);
+      setErrorMessage(err.message || 'Ocorreu um erro inesperado.');
     }
   };
 
@@ -175,18 +103,15 @@ export default function TransactionModal({
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><X size={20} /></button>
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4 overflow-y-auto">
-          {/* Switch Recorrente (desabilitado em modo de edição) */}
           <div className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg">
             <label htmlFor="is_recurring" className={`font-medium flex items-center gap-2 ${isEditMode ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-200'}`}>
-                <Repeat size={18} />
-                Tornar Recorrente?
+                <Repeat size={18} /> Tornar Recorrente?
             </label>
             <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
                 <input type="checkbox" id="is_recurring" {...register('is_recurring')} disabled={isEditMode} className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer disabled:cursor-not-allowed"/>
                 <label htmlFor="is_recurring" className="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer"></label>
             </div>
           </div>
-
           <select {...register('type')} disabled={isEditMode} className="w-full input-style disabled:opacity-70"><option value="expense">Despesa</option><option value="income">Receita</option></select>
           <input {...register('description')} className="w-full input-style" placeholder="Descrição"/>
           {errors.description && <p className="text-sm text-red-500">{errors.description.message}</p>}
@@ -203,19 +128,13 @@ export default function TransactionModal({
           {isRecurring && (
             <div className="p-4 border-t dark:border-gray-700 space-y-4">
                 <h3 className="font-medium">Detalhes da Recorrência</h3>
-                <select {...register('frequency')} className="w-full input-style">
-                    <option value="monthly">Mensal</option>
-                    <option value="weekly">Semanal</option>
-                    <option value="yearly">Anual</option>
-                </select>
+                <select {...register('frequency')} className="w-full input-style"><option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option></select>
                 {frequency === 'monthly' && <input type="number" {...register('day_of_month', {valueAsNumber: true})} placeholder="Dia do Mês (1-31)" className="w-full input-style"/>}
                 {frequency === 'weekly' && <input type="number" {...register('day_of_week', {valueAsNumber: true})} placeholder="Dia da Semana (1=Dom)" className="w-full input-style"/>}
                 {errors.frequency && <p className="text-sm text-red-500">{errors.frequency.message}</p>}
             </div>
           )}
-
           {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
-          
           <div className="flex justify-end gap-3 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded-md">Cancelar</button>
             <button type="submit" disabled={isSubmitting} className="bg-indigo-600 text-white px-4 py-2 rounded-md flex items-center gap-2 disabled:opacity-50">{isSubmitting && <Loader2 className="animate-spin" />} Salvar</button>
