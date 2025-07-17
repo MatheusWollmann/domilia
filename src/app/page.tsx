@@ -1,16 +1,14 @@
+// src/app/page.tsx
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react' // 1. Importar useCallback
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 export default function Home() {
   const router = useRouter()
 
-  useEffect(() => {
-    checkUser()
-  }, [])
-
-  const checkUser = async () => {
+  // 2. Envolver a função com useCallback
+  const checkUser = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     
     if (user) {
@@ -18,7 +16,11 @@ export default function Home() {
     } else {
       router.push('/login')
     }
-  }
+  }, [router]) // 3. Adicionar as dependências da própria função (router)
+
+  useEffect(() => {
+    checkUser()
+  }, [checkUser]) // 4. Adicionar a função memorizada às dependências do useEffect
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

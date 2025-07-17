@@ -8,7 +8,6 @@ import { startOfMonth, endOfMonth, eachDayOfInterval, getDay, getDate, getMonth,
 export const dynamic = 'force-dynamic';
 
 // Tipos mais explícitos para os dados do Supabase
-type CategoryDB = { id: string; name: string; icon: string | null; color: string | null; budget?: number | null };
 type TransactionDB = { id: string; description: string; amount: number; date: string; type: 'income' | 'expense'; category_id: string; categories: { id: string; name: string; icon: string | null; color: string | null; } | null; };
 type RecurringTransactionDB = TransactionDB & { frequency: 'weekly' | 'monthly' | 'yearly'; day_of_month: number | null; day_of_week: number | null; start_date: string; end_date: string | null; };
 
@@ -99,7 +98,7 @@ export default async function DashboardPage() {
       return { 
           id: cat.id, 
           name: cat.name, 
-          icon: cat.icon ?? null, // Correção aqui
+          icon: cat.icon ?? null,
           spent: spent, 
           budget: cat.budget as number, 
           progress: Math.min((spent / (cat.budget as number)) * 100, 100) 

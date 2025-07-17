@@ -7,13 +7,37 @@ import { startOfMonth, subDays, parseISO, eachDayOfInterval, getDay, getDate, ge
 
 export const dynamic = 'force-dynamic';
 
-// Função auxiliar para gerar transações a partir das regras de recorrência
+// CORREÇÃO: Definindo tipos específicos para substituir o 'any'
+type RecurringRule = {
+  id: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  frequency: 'monthly' | 'weekly' | 'yearly';
+  day_of_month: number | null;
+  day_of_week: number | null;
+  start_date: string;
+  end_date: string | null;
+  category_id: string;
+};
+
+type GeneratedTransaction = {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  type: 'income' | 'expense';
+  category_id: string;
+};
+
+// CORREÇÃO: Aplicando os tipos na assinatura da função
 const generateRecurringInstances = (
-  recurringItems: any[], 
+  recurringItems: RecurringRule[], 
   startDate: Date, 
   endDate: Date
-) => {
-  const generated: any[] = [];
+): GeneratedTransaction[] => {
+  // CORREÇÃO: Tipando o array de 'generated'
+  const generated: GeneratedTransaction[] = [];
 
   recurringItems.forEach(item => {
     const itemStartDate = new Date(item.start_date);
@@ -56,7 +80,6 @@ export default async function TransactionsPage() {
     redirect('/login');
   }
 
-  // Busca todos os dados necessários de uma só vez
   const [expensesResult, incomesResult, recurringResult, categoriesResult] = await Promise.all([
     supabase.from('expenses').select('*').eq('user_id', user.id),
     supabase.from('incomes').select('*').eq('user_id', user.id),
@@ -66,11 +89,10 @@ export default async function TransactionsPage() {
 
   const oneOffExpenses = expensesResult.data || [];
   const oneOffIncomes = incomesResult.data || [];
-  const recurringRules = recurringResult.data || [];
+  const recurringRules = (recurringResult.data as RecurringRule[]) || []; // Casting para nosso novo tipo
   const categories = categoriesResult.data || [];
 
-  // Calcula o saldo inicial para os gráficos
-  const firstDayOfHistory = new Date('2020-01-01'); // Um início razoável
+  const firstDayOfHistory = new Date('2020-01-01');
   const yesterday = subDays(startOfMonth(new Date()), 1);
 
   const pastRecurring = generateRecurringInstances(recurringRules, firstDayOfHistory, yesterday);
