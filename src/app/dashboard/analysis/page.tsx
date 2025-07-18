@@ -4,9 +4,8 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AnalysisView from './AnalysisView';
-import { startOfMonth, endOfMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
-// --- LÓGICA DE PREPARAÇÃO DE DADOS FINAL E CORRIGIDA ---
 const prepareSankeyData = (incomes: any[], expenses: any[]) => {
   const nodes: { name: string; color: string }[] = [];
   const links: { source: number; target: number; value: number }[] = [];
@@ -20,55 +19,79 @@ const prepareSankeyData = (incomes: any[], expenses: any[]) => {
     return nodeMap.get(name)!;
   };
   
-  // Se não houver transações, retorna dados vazios para evitar erros.
-  if (incomes.length === 0 && expenses.length === 0) {
-    return { nodes, links };
-  }
-  
-  // 1. Nó Central de Receitas
-  const totalIncomesNodeIndex = addNode('Total de Receitas', '#22c55e');
+  const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
+  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  // 2. Conecta as fontes de renda individuais ao nó central
+  if (totalIncome === 0) {
+    return { nodes: [], links: [] };
+  }
+
+  // ETAPA 1: Definir a ordem dos nós
   incomes.forEach(income => {
     if (income.amount > 0) {
-      const sourceNodeIndex = addNode(
+      addNode(
         income.categories?.name || 'Outras Receitas',
-        income.categories?.color || '#82ca9d' // Usa a cor da categoria ou um padrão
+        income.categories?.color || '#82ca9d'
       );
+    }
+  });
+
+  addNode('Receita Bruta', '#22c55e');
+  
+  const savings = totalIncome - totalExpense;
+  if (savings > 0) {
+    addNode('Sobra do Mês', '#8884d8');
+  }
+
+  if (totalExpense > 0) {
+    addNode('Despesas Totais', '#ef4444');
+  }
+  
+  expenses.forEach(expense => {
+    if (expense.amount > 0) {
+      addNode(
+        expense.categories?.name || 'Outras Despesas',
+        expense.categories?.color || '#ff8042'
+      );
+    }
+  });
+
+  // ETAPA 2: Criar os links
+  const receitaBrutaNodeIndex = nodeMap.get('Receita Bruta')!;
+  incomes.forEach(income => {
+    if (income.amount > 0) {
       links.push({
-        source: sourceNodeIndex,
-        target: totalIncomesNodeIndex,
+        source: nodeMap.get(income.categories?.name || 'Outras Receitas')!,
+        target: receitaBrutaNodeIndex,
         value: income.amount,
       });
     }
   });
 
-  // 3. Conecta o nó central às categorias de despesa individuais
-  expenses.forEach(expense => {
-    if (expense.amount > 0) {
-      const targetNodeIndex = addNode(
-        expense.categories?.name || 'Outras Despesas',
-        expense.categories?.color || '#ff7300' // Usa a cor da categoria ou um padrão
-      );
-      links.push({
-        source: totalIncomesNodeIndex,
-        target: targetNodeIndex,
-        value: expense.amount,
-      });
-    }
-  });
-
-  // 4. Calcula a sobra e conecta do nó central para um nó de "Sobra"
-  const totalIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
-  const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const savings = totalIncome - totalExpense;
-
   if (savings > 0) {
-    const savingsNodeIndex = addNode('Sobra do Mês', '#8884d8');
     links.push({
-      source: totalIncomesNodeIndex,
-      target: savingsNodeIndex,
+      source: receitaBrutaNodeIndex,
+      target: nodeMap.get('Sobra do Mês')!,
       value: savings,
+    });
+  }
+
+  if (totalExpense > 0) {
+    const despesasTotaisNodeIndex = nodeMap.get('Despesas Totais')!;
+    links.push({
+      source: receitaBrutaNodeIndex,
+      target: despesasTotaisNodeIndex,
+      value: totalExpense,
+    });
+
+    expenses.forEach(expense => {
+      if (expense.amount > 0) {
+        links.push({
+          source: despesasTotaisNodeIndex,
+          target: nodeMap.get(expense.categories?.name || 'Outras Despesas')!,
+          value: expense.amount,
+        });
+      }
     });
   }
 
@@ -76,31 +99,35 @@ const prepareSankeyData = (incomes: any[], expenses: any[]) => {
 };
 
 
-export default async function AnalysisPage() {
+// A palavra-chave 'async' é a correção para o erro
+export default async function AnalysisPage({
+  searchParams,
+}: {
+  searchParams: { month?: string };
+}) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
 
-  const now = new Date();
-  const startDate = startOfMonth(now);
-  const endDate = endOfMonth(now);
+  const selectedMonth = searchParams.month ? parseISO(searchParams.month) : new Date();
+  const startDate = startOfMonth(selectedMonth);
+  const endDate = endOfMonth(selectedMonth);
 
-  // --- CORREÇÃO PRINCIPAL: Buscando a 'cor' da categoria ---
   const { data: incomes } = await supabase
     .from('incomes')
-    .select('amount, categories(name, color)') // <-- ADICIONADO 'color'
+    .select('amount, categories(name, color)')
     .eq('user_id', user.id)
     .gte('date', startDate.toISOString())
     .lte('date', endDate.toISOString());
     
   const { data: expenses } = await supabase
     .from('expenses')
-    .select('amount, categories(name, color)') // <-- ADICIONADO 'color'
+    .select('amount, categories(name, color)')
     .eq('user_id', user.id)
     .gte('date', startDate.toISOString())
     .lte('date', endDate.toISOString());
   
   const sankeyData = prepareSankeyData(incomes || [], expenses || []);
 
-  return <AnalysisView data={sankeyData} />;
+  return <AnalysisView data={sankeyData} currentMonth={startDate} />;
 }
