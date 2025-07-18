@@ -3,13 +3,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { TrendingUp, TrendingDown, PlusCircle, Receipt, Edit } from 'lucide-react'
+import { PlusCircle } from 'lucide-react'
 import TransactionModal, { type Transaction } from '@/components/TransactionModal'
 import { type User } from '@supabase/supabase-js'
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts'
+import { format, isToday, isYesterday } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
+// Tipos recebidos como props
 export type Category = { id: string; name: string; type: 'expense' | 'income'; icon?: string | null; color?: string | null; budget?: number | null; };
-export type TransactionWithCategory = Transaction & { categories: { name: string; icon: string | null; } | null }
+export type TransactionWithCategory = Transaction & { categories: { name: string; icon: string | null; color: string | null } | null }
 export type BudgetData = { id: string; name: string; icon: string | null; spent: number; budget: number; progress: number; }
 
 interface DashboardViewProps {
@@ -24,127 +27,128 @@ interface DashboardViewProps {
   budgetsData: BudgetData[];
 }
 
+// Função para agrupar transações por dia
+const groupTransactionsByDay = (transactions: TransactionWithCategory[]) => {
+  return transactions.reduce((acc, transaction) => {
+    const day = format(new Date(transaction.date), 'yyyy-MM-dd');
+    if (!acc[day]) {
+      acc[day] = [];
+    }
+    acc[day].push(transaction);
+    return acc;
+  }, {} as Record<string, TransactionWithCategory[]>);
+};
+
 export default function DashboardView({ user, balance, totalIncomes, totalExpenses, recentTransactions, chartData, expenseCategories, incomeCategories, budgetsData }: DashboardViewProps) {
   const router = useRouter();
   const [showTransactionModal, setShowTransactionModal] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-  
+
   const handleOpenModal = (transaction?: Transaction) => {
     setTransactionToEdit(transaction || null);
     setShowTransactionModal(true);
   }
+  
+  const groupedTransactions = groupTransactionsByDay(recentTransactions);
 
-  const handleCloseModal = () => {
-    setShowTransactionModal(false);
-    setTransactionToEdit(null);
-  }
-
-  const getBudgetBarColor = (progress: number) => {
-    if (progress > 90) return 'bg-red-500';
-    if (progress > 75) return 'bg-yellow-500';
-    return 'bg-green-500';
+  const formatDateHeading = (dateStr: string) => {
+    const date = new Date(dateStr);
+    if (isToday(date)) return 'Hoje';
+    if (isYesterday(date)) return 'Ontem';
+    return format(date, "dd 'de' MMMM", { locale: ptBR });
   }
 
   return (
-    <div className="space-y-8 p-4 sm:p-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <button onClick={() => handleOpenModal()} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm">
-          <PlusCircle size={20} /> Nova Transação
-        </button>
+    <div className="space-y-10">
+      {/* Cabeçalho Amigável */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-800">Olá, {user.user_metadata.full_name || user.email?.split('@')[0]}!</h1>
+        <p className="text-lg text-gray-500">Aqui está o resumo financeiro deste mês.</p>
       </div>
 
+      {/* Resumo Financeiro - Menos "cards", mais "widgets" */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Saldo Disponível</p>
-          <p className={`text-3xl font-bold ${balance >= 0 ? 'text-gray-900 dark:text-white' : 'text-red-600 dark:text-red-400'}`}>{formatCurrency(balance)}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Receitas no Mês</p>
-          <p className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalIncomes)}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Despesas no Mês</p>
-          <p className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalExpenses)}</p>
-        </div>
+          <div className="bg-white p-6 rounded-xl border border-gray-200">
+              <p className="text-base font-medium text-gray-500">Saldo Atual</p>
+              <p className="text-4xl font-bold text-gray-800 mt-2">{formatCurrency(balance)}</p>
+          </div>
+          <div className="bg-green-50 p-6 rounded-xl border border-green-200">
+              <p className="text-base font-medium text-green-800">Receitas</p>
+              <p className="text-3xl font-bold text-green-700 mt-2">{formatCurrency(totalIncomes)}</p>
+          </div>
+          <div className="bg-red-50 p-6 rounded-xl border border-red-200">
+              <p className="text-base font-medium text-red-800">Despesas</p>
+              <p className="text-3xl font-bold text-red-700 mt-2">{formatCurrency(totalExpenses)}</p>
+          </div>
       </div>
 
-      {budgetsData.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Acompanhamento de Orçamentos</h2>
-              <div className="space-y-4">
-                  {budgetsData.map(budget => (
-                      <div key={budget.id}>
-                          <div className="flex justify-between items-center mb-1">
-                              <span className="text-sm font-medium flex items-center gap-2">{budget.icon} {budget.name}</span>
-                              <span className="text-sm text-gray-500 dark:text-gray-400">{formatCurrency(budget.spent)} / <span className="font-medium text-gray-700 dark:text-gray-300">{formatCurrency(budget.budget)}</span></span>
-                          </div>
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                              <div className={`h-2.5 rounded-full ${getBudgetBarColor(budget.progress)}`} style={{ width: `${budget.progress}%` }}></div>
-                          </div>
-                      </div>
-                  ))}
-              </div>
+      {/* Layout Principal - Feed de Transações e Orçamentos */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="lg:col-span-2 space-y-8">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-800">Últimos Lançamentos</h2>
+            <button onClick={() => handleOpenModal()} className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2 shadow-sm">
+              <PlusCircle size={20} /> Adicionar
+            </button>
           </div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700">
-          <h2 className="p-6 text-lg font-semibold text-gray-900 dark:text-white border-b dark:border-gray-700">Transações Recentes</h2>
-          <div className="p-4">
-            {recentTransactions.length > 0 ? (
-              <div className="space-y-2">
-                {recentTransactions.map((transaction) => {
-                  const isExpense = transaction.type === 'expense';
-                  return (
-                    <div key={transaction.id} className="flex items-center justify-between py-3 px-2 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isExpense ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400'}`}>
-                          {isExpense ? <TrendingDown size={20} /> : <TrendingUp size={20} />}
+          {/* Feed de Transações Conversacional */}
+          <div className="space-y-6">
+            {Object.keys(groupedTransactions).map(day => (
+              <div key={day}>
+                <h3 className="font-semibold text-gray-500 mb-3">{formatDateHeading(day)}</h3>
+                <div className="space-y-2">
+                  {groupedTransactions[day].map(t => {
+                    const isExpense = t.type === 'expense';
+                    // CORREÇÃO APLICADA AQUI
+                    const categoryColor = t.categories?.color || '#71717a'; // Cinza como cor padrão
+                    return (
+                      <div key={t.id} className="bg-white p-4 rounded-xl border border-gray-200 flex items-center justify-between transition hover:shadow-md">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl`} style={{backgroundColor: categoryColor + '20', color: categoryColor}}>
+                              {t.categories?.icon || (isExpense ? '💸' : '💰')}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{t.description}</p>
+                            <p className="text-sm text-gray-500">{t.categories?.name || 'Sem Categoria'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{transaction.description}</p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{transaction.categories?.icon} {transaction.categories?.name || 'Sem Categoria'} • {new Date(transaction.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</p>
-                        </div>
+                        <p className={`font-bold text-lg ${isExpense ? 'text-gray-700' : 'text-green-600'}`}>
+                          {isExpense ? '-' : '+'} {formatCurrency(t.amount)}
+                        </p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <p className={`font-semibold ${isExpense ? 'text-red-600' : 'text-green-600'}`}> {isExpense ? '-' : '+'} {formatCurrency(transaction.amount)} </p>
-                        <button onClick={() => handleOpenModal(transaction)} className="p-2 text-gray-400 hover:text-indigo-600 rounded-md transition-colors"><Edit size={16}/></button>
-                      </div>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Nenhuma transação este mês</h3>
-              </div>
-            )}
+            ))}
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700 flex flex-col">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Despesas por Categoria</h2>
-          <div className="flex-grow flex items-center justify-center">
-            {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100}>
-                    {chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={entry.color} />))}
-                  </Pie>
-                  <Tooltip formatter={(value: number | string) => [formatCurrency(value as number), "Total"]} />
-                  <Legend iconSize={10} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : ( <p className="text-gray-500 dark:text-gray-400 text-center">Sem dados de despesas para exibir o gráfico.</p> )}
-          </div>
+        {/* Coluna Lateral com Orçamentos */}
+        <div className="lg:col-span-1 space-y-8">
+            <div className="bg-white p-6 rounded-xl border border-gray-200">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Orçamentos</h2>
+              <div className="space-y-5">
+                {budgetsData.length > 0 ? budgetsData.map(budget => (
+                  <div key={budget.id}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium flex items-center gap-2 text-gray-700">{budget.icon} {budget.name}</span>
+                      <span className="text-sm text-gray-500">{Math.round(budget.progress)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div className="bg-purple-500 h-2.5 rounded-full" style={{ width: `${budget.progress}%` }}></div>
+                    </div>
+                  </div>
+                )) : <p className="text-center text-gray-500 text-sm py-4">Nenhum orçamento definido.</p>}
+              </div>
+            </div>
         </div>
       </div>
       
-      <TransactionModal isOpen={showTransactionModal} onClose={handleCloseModal} onSuccess={() => { router.refresh(); handleCloseModal(); }} user={user} expenseCategories={expenseCategories} incomeCategories={incomeCategories} transactionToEdit={transactionToEdit} />
+      <TransactionModal isOpen={showTransactionModal} onClose={() => setShowTransactionModal(false)} onSuccess={() => router.refresh()} user={user} expenseCategories={expenseCategories} incomeCategories={incomeCategories} transactionToEdit={transactionToEdit} />
     </div>
   )
 }

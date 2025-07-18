@@ -3,19 +3,25 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import TransactionsView from './TransactionsView';
-
-// Remova as importações de 'date-fns' que não são mais necessárias aqui
-// A função 'generateRecurringInstances' será movida para o cliente que já a possui
+import { startOfMonth, parseISO } from 'date-fns'; // Adicionar importações
 
 export const dynamic = 'force-dynamic';
 
-export default async function TransactionsPage() {
+// 1. Alterar a função para ser 'async' e aceitar 'searchParams'
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: { month?: string };
+}) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
 
-  // Buscamos TODOS os dados, sem filtro de data no servidor.
-  // O cliente fará todo o trabalho de filtragem e cálculo.
+  // 2. Determinar o mês a partir da URL ou usar a data atual
+  const selectedMonth = searchParams.month ? parseISO(searchParams.month) : new Date();
+  const startDate = startOfMonth(selectedMonth);
+
+  // A busca de dados continua a mesma, pois o cliente faz a filtragem
   const [expensesResult, incomesResult, recurringResult, categoriesResult] = await Promise.all([
     supabase.from('expenses').select('*').eq('user_id', user.id),
     supabase.from('incomes').select('*').eq('user_id', user.id),
@@ -28,14 +34,14 @@ export default async function TransactionsPage() {
   const recurringRules = recurringResult.data || [];
   const categories = categoriesResult.data || [];
 
-  // Não calculamos mais o startingBalance aqui.
-  // Passamos os dados brutos para o componente de cliente.
   return (
     <TransactionsView 
       oneOffExpenses={oneOffExpenses}
       oneOffIncomes={oneOffIncomes}
       recurringRules={recurringRules}
       categories={categories}
+      // 3. Passar a propriedade 'currentMonth' que estava faltando
+      currentMonth={startDate} 
     />
   );
 }

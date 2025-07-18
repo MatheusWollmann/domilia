@@ -4,8 +4,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-// 1. Importar o novo ícone
-import { LogOut, Home, BarChart3, Settings, PieChart } from 'lucide-react';
+import { LogOut, LayoutDashboard, BarChart3, Settings, PieChart, Landmark } from 'lucide-react';
 import { type User } from '@supabase/supabase-js';
 
 export default function DashboardUI({
@@ -25,62 +24,66 @@ export default function DashboardUI({
     router.refresh();
   };
 
-  // 2. Adicionar o novo item de menu
   const menuItems = [
-    { href: '/dashboard', icon: Home, label: 'Dashboard' },
-    { href: '/dashboard/transactions', icon: BarChart3, label: 'Transações' },
-    { href: '/dashboard/analysis', icon: PieChart, label: 'Análise' },
-    { href: '/dashboard/settings', icon: Settings, label: 'Configurações' },
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Meu Painel' },
+    { href: '/dashboard/transactions', icon: BarChart3, label: 'Lançamentos' },
+    { href: '/dashboard/analysis', icon: PieChart, label: 'Análise de Fluxo' },
+    { href: '/dashboard/settings', icon: Settings, label: 'Ajustes' },
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <Home className="h-6 w-6 text-indigo-600" />
-              <h1 className="text-xl font-bold text-gray-800 dark:text-white">Domilia</h1>
-            </Link>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 dark:text-gray-400 hidden sm:block">
-                {user.email}
-              </span>
-              <button
-                onClick={handleLogout}
-                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-white flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+    <div className="flex min-h-screen bg-[#FBFBFA]"> {/* Fundo cor de papel/creme */}
+      {/* Barra Lateral / Divisórias do Caderno */}
+      <aside className="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-6 flex items-center gap-3 border-b border-gray-200">
+           <div className="bg-purple-100 text-purple-700 p-2 rounded-lg">
+             <Landmark size={24} />
+           </div>
+           <h1 className="text-xl font-bold text-gray-800 tracking-tighter">Domilia</h1>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.map((item) => {
+            // Verifica se o link é a página atual
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-base font-medium ${
+                  isActive
+                    ? 'bg-purple-100 text-purple-700' // Estilo de aba ativa
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+                }`}
               >
-                <LogOut size={18} />
-                <span className="hidden sm:inline">Sair</span>
-              </button>
+                <item.icon size={20} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-gray-200">
+            <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                    {user.email?.[0].toUpperCase()}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{user.email}</p>
+                </div>
             </div>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+          >
+            <LogOut size={20} />
+            <span className="font-medium">Sair</span>
+          </button>
         </div>
-      </header>
-      <nav className="bg-white dark:bg-gray-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-4 sm:space-x-8 overflow-x-auto">
-            {menuItems.map((item) => {
-              const isActive = pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2 py-4 px-1 border-b-2 transition-colors whitespace-nowrap ${
-                    isActive
-                      ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  <item.icon size={20} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </nav>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      </aside>
+
+      {/* Área de Conteúdo Principal */}
+      <main className="flex-1 p-6 sm:p-8 lg:p-10 overflow-y-auto">
         {children}
       </main>
     </div>
