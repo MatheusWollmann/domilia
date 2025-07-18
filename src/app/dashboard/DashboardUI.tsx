@@ -4,7 +4,8 @@
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { LogOut, Home, BarChart3, Settings } from 'lucide-react';
+// 1. Importar o novo ícone
+import { LogOut, Home, BarChart3, Settings, PieChart } from 'lucide-react';
 import { type User } from '@supabase/supabase-js';
 
 export default function DashboardUI({
@@ -24,9 +25,11 @@ export default function DashboardUI({
     router.refresh();
   };
 
+  // 2. Adicionar o novo item de menu
   const menuItems = [
     { href: '/dashboard', icon: Home, label: 'Dashboard' },
     { href: '/dashboard/transactions', icon: BarChart3, label: 'Transações' },
+    { href: '/dashboard/analysis', icon: PieChart, label: 'Análise' },
     { href: '/dashboard/settings', icon: Settings, label: 'Configurações' },
   ];
 

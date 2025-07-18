@@ -3,21 +3,22 @@
 
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, eachDayOfInterval, getDay, getDate, getMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, subMonths, addMonths, eachDayOfInterval, getDay, getDate, getMonth, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+// --- Tipos ---
 type Transaction = { id: string; description: string; amount: number; date: string; category_id: string; };
 type RecurringRule = { id: string; description: string; amount: number; type: 'income' | 'expense'; frequency: 'monthly' | 'weekly' | 'yearly'; day_of_month: number | null; day_of_week: number | null; start_date: string; end_date: string | null; category_id: string; };
 type Category = { id: string; name: string; icon: string | null; };
 type CombinedTransaction = { id: string; description: string; amount: number; date: string; type: 'income' | 'expense'; category: Category | undefined; isRecurring: boolean; category_id: string; };
 
+// --- Interface de Props (sem 'startingBalance') ---
 interface TransactionsViewProps {
   oneOffExpenses: Transaction[];
   oneOffIncomes: Transaction[];
   recurringRules: RecurringRule[];
   categories: Category[];
-  startingBalance: number;
 }
 
 const generateRecurringInstances = (rules: RecurringRule[], start: Date, end: Date): CombinedTransaction[] => {
@@ -26,13 +27,17 @@ const generateRecurringInstances = (rules: RecurringRule[], start: Date, end: Da
     const ruleStart = parseISO(rule.start_date);
     const intervalStart = start > ruleStart ? start : ruleStart;
     const intervalEnd = rule.end_date && parseISO(rule.end_date) < end ? parseISO(rule.end_date) : end;
+    
     if (intervalStart > intervalEnd) return;
+    
     eachDayOfInterval({ start: intervalStart, end: intervalEnd }).forEach(day => {
       let shouldCreate = false;
       if (rule.frequency === 'monthly' && getDate(day) === rule.day_of_month) shouldCreate = true;
       else if (rule.frequency === 'weekly' && (getDay(day) + 1) === rule.day_of_week) shouldCreate = true;
       else if (rule.frequency === 'yearly' && getMonth(day) === getMonth(ruleStart) && getDate(day) === getDate(ruleStart)) shouldCreate = true;
+      
       if (shouldCreate) {
+        // CORREÇÃO APLICADA AQUI: Removido o acento grave (`) extra
         instances.push({ id: `rec-${rule.id}-${format(day, 'yyyy-MM-dd')}`, description: rule.description, amount: rule.amount, date: format(day, 'yyyy-MM-dd'), type: rule.type, category: undefined, isRecurring: true, category_id: rule.category_id });
       }
     });
@@ -40,18 +45,35 @@ const generateRecurringInstances = (rules: RecurringRule[], start: Date, end: Da
   return instances;
 };
 
-export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurringRules, categories, startingBalance }: TransactionsViewProps) {
+export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurringRules, categories }: TransactionsViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const { groupedTransactions, dailyBalances, totals } = useMemo(() => {
-    const start = startOfMonth(currentMonth);
-    const end = endOfMonth(currentMonth);
     const categoriesMap = new Map(categories.map(c => [c.id, c]));
-    const recurringInstances = generateRecurringInstances(recurringRules, start, end);
+    
+    const startOfSelectedMonth = startOfMonth(currentMonth);
+    const endOfPreviousDay = subDays(startOfSelectedMonth, 1);
+    const firstDayOfHistory = new Date('2020-01-01');
+
+    const pastOneOffIncomes = oneOffIncomes.filter(t => parseISO(t.date) <= endOfPreviousDay);
+    const pastOneOffExpenses = oneOffExpenses.filter(t => parseISO(t.date) <= endOfPreviousDay);
+    
+    const pastRecurringInstances = generateRecurringInstances(recurringRules, firstDayOfHistory, endOfPreviousDay);
+    
+    const pastIncomesTotal = pastOneOffIncomes.reduce((sum, t) => sum + t.amount, 0) + pastRecurringInstances.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    const pastExpensesTotal = pastOneOffExpenses.reduce((sum, t) => sum + t.amount, 0) + pastRecurringInstances.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+    const startingBalanceForMonth = pastIncomesTotal - pastExpensesTotal;
+    
+    const start = startOfSelectedMonth;
+    const end = endOfMonth(currentMonth);
+    
+    const recurringInstancesForMonth = generateRecurringInstances(recurringRules, start, end);
+    
     const combined: CombinedTransaction[] = [
       ...oneOffExpenses.map((t): CombinedTransaction => ({ ...t, type: 'expense', category: categoriesMap.get(t.category_id), isRecurring: false })),
       ...oneOffIncomes.map((t): CombinedTransaction => ({ ...t, type: 'income', category: categoriesMap.get(t.category_id), isRecurring: false })),
-      ...recurringInstances.map((t): CombinedTransaction => ({ ...t, category: categoriesMap.get(t.category_id) }))
+      ...recurringInstancesForMonth.map((t): CombinedTransaction => ({ ...t, category: categoriesMap.get(t.category_id) }))
     ].filter(t => { const tDate = parseISO(t.date); return tDate >= start && tDate <= end; }).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
     const grouped = combined.reduce((acc, t) => {
@@ -62,7 +84,8 @@ export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurr
     }, {} as Record<string, CombinedTransaction[]>);
 
     const dailyBalances: { date: string; Saldo: number; Entradas: number; Saídas: number }[] = [];
-    let runningBalance = startingBalance;
+    let runningBalance = startingBalanceForMonth;
+    
     eachDayOfInterval({ start, end }).forEach(day => {
         const dayKey = format(day, 'yyyy-MM-dd');
         const dayTransactions = grouped[dayKey] || [];
@@ -74,7 +97,8 @@ export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurr
 
     const totals = { incomes: dailyBalances.reduce((sum, d) => sum + d.Entradas, 0), expenses: dailyBalances.reduce((sum, d) => sum + d.Saídas, 0), };
     return { groupedTransactions: grouped, dailyBalances, totals };
-  }, [currentMonth, oneOffExpenses, oneOffIncomes, recurringRules, categories, startingBalance]);
+    
+  }, [currentMonth, oneOffExpenses, oneOffIncomes, recurringRules, categories]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
@@ -82,7 +106,7 @@ export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurr
     <div className="space-y-6">
         <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 flex justify-between items-center">
             <button onClick={() => setCurrentMonth(prev => subMonths(prev, 1))} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronLeft size={24} /></button>
-            <h2 className="text-xl font-semibold capitalize text-center w-48">{format(currentMonth, 'MMMM \'de\' yyyy', { locale: ptBR })}</h2>
+            <h2 className="text-xl font-semibold capitalize text-center w-48">{format(currentMonth, "MMMM 'de' yyyy", { locale: ptBR })}</h2>
             <button onClick={() => setCurrentMonth(prev => addMonths(prev, 1))} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronRight size={24} /></button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -115,15 +139,42 @@ export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurr
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 h-64">
                     <h4 className="font-semibold mb-2">Saldo</h4>
-                    <ResponsiveContainer width="100%" height="100%"><AreaChart data={dailyBalances} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}><defs><linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} /><XAxis dataKey="date" /><YAxis width={80} tickFormatter={(value) => formatCurrency(value as number)} /><Tooltip formatter={(value) => [formatCurrency(value as number), "Saldo"]} /><Area type="monotone" dataKey="Saldo" stroke="#8884d8" fill="url(#colorSaldo)" /></AreaChart></ResponsiveContainer>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dailyBalances} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <defs><linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/><stop offset="95%" stopColor="#8884d8" stopOpacity={0}/></linearGradient></defs>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={['auto', 'auto']} width={80} tickFormatter={(value) => formatCurrency(value as number)} />
+                            <Tooltip formatter={(value) => [formatCurrency(value as number), "Saldo"]} />
+                            <Area type="monotone" dataKey="Saldo" stroke="#8884d8" fill="url(#colorSaldo)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 h-64">
                     <h4 className="font-semibold mb-2">Entradas</h4>
-                     <ResponsiveContainer width="100%" height="100%"><AreaChart data={dailyBalances} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}><defs><linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} /><XAxis dataKey="date" /><YAxis domain={[0, 'dataMax']} width={80} tickFormatter={(value) => formatCurrency(value as number)} /><Tooltip formatter={(value) => [formatCurrency(value as number), "Entradas"]} /><Area type="monotone" dataKey="Entradas" stroke="#22c55e" fill="url(#colorEntradas)" /></AreaChart></ResponsiveContainer>
+                     <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dailyBalances} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <defs><linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#22c55e" stopOpacity={0.8}/><stop offset="95%" stopColor="#22c55e" stopOpacity={0}/></linearGradient></defs>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0, 'auto']} width={80} tickFormatter={(value) => formatCurrency(value as number)} />
+                            <Tooltip formatter={(value) => [formatCurrency(value as number), "Entradas"]} />
+                            <Area type="monotone" dataKey="Entradas" stroke="#22c55e" fill="url(#colorEntradas)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 h-64">
                     <h4 className="font-semibold mb-2">Saídas</h4>
-                     <ResponsiveContainer width="100%" height="100%"><AreaChart data={dailyBalances} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}><defs><linearGradient id="colorSaidas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} /><XAxis dataKey="date" /><YAxis domain={[0, 'dataMax']} width={80} tickFormatter={(value) => formatCurrency(value as number)} /><Tooltip formatter={(value) => [formatCurrency(value as number), "Saídas"]} /><Area type="monotone" dataKey="Saídas" stroke="#ef4444" fill="url(#colorSaidas)" /></AreaChart></ResponsiveContainer>
+                     <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={dailyBalances} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <defs><linearGradient id="colorSaidas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.8}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient></defs>
+                            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                            <XAxis dataKey="date" />
+                            <YAxis domain={[0, 'auto']} width={80} tickFormatter={(value) => formatCurrency(value as number)} />
+                            <Tooltip formatter={(value) => [formatCurrency(value as number), "Saídas"]} />
+                            <Area type="monotone" dataKey="Saídas" stroke="#ef4444" fill="url(#colorSaidas)" />
+                        </AreaChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>
