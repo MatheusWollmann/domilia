@@ -94,31 +94,49 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
-export default async function AnalysisPage({ searchParams }: { searchParams?: Record<string, string> }) {
+type AnalysisPageProps = {
+  searchParams?: {
+    [key: string]: string | string[] | undefined;
+  };
+};
+
+export default async function AnalysisPage({ searchParams }: AnalysisPageProps) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
 
-  const selectedMonth = searchParams?.month ? parseISO(searchParams.month) : new Date();
+  const monthParam = searchParams?.month;
+  // Safely handle the case where a query param could be an array
+  const monthString = Array.isArray(monthParam) ? monthParam[0] : monthParam;
+  const selectedMonth = monthString ? parseISO(monthString) : new Date();
   const startDate = startOfMonth(selectedMonth);
   const endDate = endOfMonth(selectedMonth);
 
-  const { data: incomes } = await supabase
-    .from('incomes')
-    .select('amount, categories(name, color)')
-    .eq('user_id', user.id)
-    .gte('date', startDate.toISOString())
-    .lte('date', endDate.toISOString());
-    
-  const { data: expenses } = await supabase
-    .from('expenses')
-    .select('amount, categories(name, color)')
-    .eq('user_id', user.id)
-    .gte('date', startDate.toISOString())
-    .lte('date', endDate.toISOString());
+  const fetchTransactions = async () => {
+    const commonQuery = (table: 'incomes' | 'expenses') => supabase
+      .from(table)
+      .select('amount, categories(name, color)')
+      .eq('user_id', user.id)
+      .gte('date', startDate.toISOString())
+      .lte('date', endDate.toISOString());
+
+    const [incomesResult, expensesResult] = await Promise.all([
+      commonQuery('incomes'),
+      commonQuery('expenses'),
+    ]);
+
+    if (incomesResult.error) throw new Error(`Failed to fetch incomes: ${incomesResult.error.message}`);
+    if (expensesResult.error) throw new Error(`Failed to fetch expenses: ${expensesResult.error.message}`);
+
+    return { incomes: incomesResult.data, expenses: expensesResult.data };
+  };
+
+  // NOTE: Consider adding a Next.js error boundary (error.tsx) to gracefully handle this error.
+  const { incomes, expenses } = await fetchTransactions();
   
   const flatIncomes = (incomes || []).map(i => ({
     amount: i.amount,
+    // Supabase returns a one-to-many relation as an array, so we take the first item.
     categories: i.categories?.[0],
   }));
 
@@ -141,7 +159,7 @@ export default async function AnalysisPage({ searchParams }: { searchParams?: Re
       totalIncome={totalIncome}
       totalExpense={totalExpense}
       biggestExpense={{
-        name: biggestExpense.categories.name,
+        name: biggestExpense.categories?.name ?? 'N/A',
         amount: biggestExpense.amount
       }}
     />
