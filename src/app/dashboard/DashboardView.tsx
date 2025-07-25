@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import { PlusCircle } from 'lucide-react'
 import TransactionModal, { type Transaction } from '@/components/TransactionModal'
 import { type User } from '@supabase/supabase-js'
-import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts'
 import { format, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -39,7 +38,7 @@ const groupTransactionsByDay = (transactions: TransactionWithCategory[]) => {
   }, {} as Record<string, TransactionWithCategory[]>);
 };
 
-export default function DashboardView({ user, balance, totalIncomes, totalExpenses, recentTransactions, chartData, expenseCategories, incomeCategories, budgetsData }: DashboardViewProps) {
+export default function DashboardView({ user, balance, totalIncomes, totalExpenses, recentTransactions, expenseCategories, incomeCategories, budgetsData }: DashboardViewProps) {
   const router = useRouter();
   const [showTransactionModal, setShowTransactionModal] = useState(false)
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null);

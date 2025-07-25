@@ -4,7 +4,7 @@
 
 import { type User } from '@supabase/supabase-js';
 import { useState } from 'react';
-import { User as UserIcon, Tag, Repeat, PiggyBank, Edit, Trash2, PlusCircle } from 'lucide-react';
+import { User as UserIcon, Tag, Repeat, Edit, Trash2, PlusCircle } from 'lucide-react';
 
 // Tipos para os dados recebidos
 type Category = { id: string; name: string; icon: string | null; color: string | null; type: 'income' | 'expense', budget: number | null };
@@ -17,8 +17,8 @@ interface SettingsViewProps {
 }
 
 export default function SettingsView({ user, initialCategories, initialRecurringTransactions }: SettingsViewProps) {
-  const [categories, setCategories] = useState(initialCategories);
-  const [recurring, setRecurring] = useState(initialRecurringTransactions);
+  const [categories] = useState(initialCategories);
+  const [recurring] = useState(initialRecurringTransactions);
   
   const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 

@@ -6,8 +6,23 @@ import { redirect } from 'next/navigation';
 import AnalysisView from './AnalysisView';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
+type Category = {
+  name: string;
+  color?: string;
+};
+
+type Income = {
+  amount: number;
+  categories?: Category;
+};
+
+type Expense = {
+  amount: number;
+  categories?: Category;
+};
+
 // A função prepareSankeyData permanece a mesma
-const prepareSankeyData = (incomes: any[], expenses: any[]) => {
+const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   const nodes: { name: string; color: string }[] = [];
   const links: { source: number; target: number; value: number }[] = [];
   const nodeMap = new Map<string, number>();
@@ -107,11 +122,21 @@ export default async function AnalysisPage({
     .gte('date', startDate.toISOString())
     .lte('date', endDate.toISOString());
   
-  const { nodes, links, totalIncome, totalExpense } = prepareSankeyData(incomes || [], expenses || []); // Cast to any[] to match the function signature
+  const flatIncomes = (incomes || []).map(i => ({
+    amount: i.amount,
+    categories: i.categories?.[0],
+  }));
 
-  const biggestExpense = (expenses || []).reduce((max, expense) => 
-    (expense.amount || 0) > (max.amount || 0) ? expense : max, 
-    { amount: 0, categories: { name: 'N/A', color: '#71717a' } } as any // Cast initial value to any to match the type of expense
+  const flatExpenses = (expenses || []).map(e => ({
+    amount: e.amount,
+    categories: e.categories?.[0],
+  }));
+
+  const { nodes, links, totalIncome, totalExpense } = prepareSankeyData(flatIncomes, flatExpenses);
+
+  const biggestExpense = flatExpenses.reduce((max, expense) =>
+    (expense.amount || 0) > (max.amount || 0) ? expense : max,
+    { amount: 0, categories: { name: 'N/A', color: '#71717a' } }
   );
 
   return (

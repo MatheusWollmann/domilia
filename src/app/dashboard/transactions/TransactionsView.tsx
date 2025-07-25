@@ -56,7 +56,7 @@ const groupTransactionsByDay = (transactions: CombinedTransaction[]) => {
 
 export default function TransactionsView({ oneOffExpenses, oneOffIncomes, recurringRules, categories, currentMonth }: TransactionsViewProps) {
   const router = useRouter();
-  const currentMonthDate = new Date(currentMonth);
+  const currentMonthDate = useMemo(() => new Date(currentMonth), [currentMonth]);
 
   const { groupedTransactions, dailyBalances, totals } = useMemo(() => {
     const categoriesMap = new Map(categories.map(c => [c.id, c]));

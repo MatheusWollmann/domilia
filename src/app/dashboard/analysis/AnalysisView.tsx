@@ -5,7 +5,19 @@ import { useRouter } from 'next/navigation';
 import { Sankey, ResponsiveContainer, Tooltip } from 'recharts';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingDown, PiggyBank } from 'lucide-react';
+
+type SankeyNodeProps = {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  index: number;
+  payload: {
+    name: string;
+    color?: string;
+  };
+};
 
 // --- Tipos ---
 interface AnalysisViewProps {
@@ -83,7 +95,7 @@ export default function AnalysisView({ data, currentMonth, totalIncome, totalExp
                     nodePadding={30}
                     margin={{ left: 150, right: 150, top: 5, bottom: 5 }}
                     link={{ stroke: '#9ca3af', strokeOpacity: 0.4 }}
-                    node={({ x = 0, y = 0, width = 0, height = 0, index, payload }: any) => {
+                    node={({ x = 0, y = 0, width = 0, height = 0, index, payload }: SankeyNodeProps) => {
                       const nodePayload = payload;
                       return (
                         <g key={`sankey-node-${index}`}> 
@@ -95,7 +107,7 @@ export default function AnalysisView({ data, currentMonth, totalIncome, totalExp
                       );
                     }}
                 >
-                    <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                    <Tooltip formatter={(value: number | string) => formatCurrency(Number(value))} />
                 </Sankey>
             </ResponsiveContainer>
         ) : (
