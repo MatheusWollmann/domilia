@@ -94,14 +94,7 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
-type PageProps = {
-  searchParams?: {
-    month?: string;
-  };
-};
-
-
-export default async function AnalysisPage({ searchParams }: PageProps) {
+export default async function AnalysisPage({ searchParams }: { searchParams?: Record<string, string> }) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
