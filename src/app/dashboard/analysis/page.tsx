@@ -94,17 +94,19 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
+type PageProps = {
+  searchParams?: {
+    month?: string;
+  };
+};
 
-export default async function AnalysisPage({
-  searchParams,
-}: {
-  searchParams: { month?: string };
-}) {
+
+export default async function AnalysisPage({ searchParams }: PageProps) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
 
-  const selectedMonth = searchParams.month ? parseISO(searchParams.month) : new Date();
+  const selectedMonth = searchParams?.month ? parseISO(searchParams.month) : new Date();
   const startDate = startOfMonth(selectedMonth);
   const endDate = endOfMonth(selectedMonth);
 
