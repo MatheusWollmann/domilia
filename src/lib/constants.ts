@@ -6,6 +6,7 @@ export const SANKEY_NODE_NAMES = {
   MONTHLY_SAVINGS: 'Sobra do Mês',
   OTHER_INCOMES: 'Outras Receitas',
   OTHER_EXPENSES: 'Outras Despesas',
+  NOT_APPLICABLE: 'N/A',
 };
 
 export const SANKEY_NODE_COLORS = {

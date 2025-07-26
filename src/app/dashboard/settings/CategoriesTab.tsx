@@ -7,7 +7,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Edit, Trash2, Loader2, X, FolderKanban } from 'lucide-react';
-import { type Category } from './SettingsView';
+import { type Category } from './types';
 
 const categorySchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),

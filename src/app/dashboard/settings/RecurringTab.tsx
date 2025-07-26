@@ -7,7 +7,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PlusCircle, Edit, Trash2, Loader2, X, Repeat } from 'lucide-react';
-import { type Category, type RecurringTransaction } from './SettingsView';
+import { type Category, type RecurringTransaction } from './types';
 
 const recurringSchema = z.object({
     description: z.string().min(2, "A descrição é obrigatória."),

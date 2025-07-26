@@ -1,12 +1,11 @@
 // src/app/dashboard/analysis/page.tsx
 
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AnalysisView from './AnalysisView';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Income, Expense } from '@/types/database.types';
 import { SANKEY_NODE_NAMES, SANKEY_NODE_COLORS } from '@/lib/constants';
+import { getMonthlyTransactions } from './data';
 
 // A função prepareSankeyData permanece a mesma
 const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
@@ -81,75 +80,54 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
-//type PageProps = {
-//  searchParams: { [key: string]: string | string[] | undefined };
-//};
-
 export default async function AnalysisPage({
   searchParams,
 }: {
-  searchParams?: { [key: string]: string | string[] | undefined }
+  // This is the most robust and correct way to type page props in the Next.js App Router.
+  searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const supabase = createServerComponentClient({ cookies });
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) { redirect('/login'); }
-
   const monthParam = searchParams?.month;
   // Safely handle the case where a query param could be an array
   const monthString = Array.isArray(monthParam) ? monthParam[0] : monthParam;
   const selectedMonth = monthString ? parseISO(monthString) : new Date();
   const startDate = startOfMonth(selectedMonth);
   const endDate = endOfMonth(selectedMonth);
+  
+  // NOTE: Consider adding a Next.js error boundary (error.tsx) to gracefully handle this error.
+  const { user, incomes, expenses } = await getMonthlyTransactions(
+    startDate,
+    endDate,
+  );
+  
+  if (!user) {
+    redirect('/login');
+  }
 
-  const fetchTransactions = async () => {
-    const commonQuery = (table: 'incomes' | 'expenses') => supabase
-      .from(table)
-      .select('amount, categories(name, color)')
-      .eq('user_id', user.id)
-      .gte('date', startDate.toISOString())
-      .lte('date', endDate.toISOString());
+  const { nodes, links, totalIncome, totalExpense } = prepareSankeyData(
+    incomes,
+    expenses,
+  );
 
-    const [incomesResult, expensesResult] = await Promise.all([
-      commonQuery('incomes'),
-      commonQuery('expenses'),
-    ]);
-
-    if (incomesResult.error) throw new Error(`Failed to fetch incomes: ${incomesResult.error.message}`);
-    if (expensesResult.error) throw new Error(`Failed to fetch expenses: ${expensesResult.error.message}`);
-
-    return { incomes: incomesResult.data, expenses: expensesResult.data };
+  const defaultExpense: Expense = {
+    amount: 0,
+    categories: { name: SANKEY_NODE_NAMES.NOT_APPLICABLE },
   };
 
-  // NOTE: Consider adding a Next.js error boundary (error.tsx) to gracefully handle this error.
-  const { incomes, expenses } = await fetchTransactions();
-  
-  const flatIncomes = (incomes || []).map(i => ({
-    amount: i.amount,
-    // Supabase returns a one-to-many relation as an array, so we take the first item.
-    categories: i.categories?.[0],
-  }));
-
-  const flatExpenses = (expenses || []).map(e => ({
-    amount: e.amount,
-    categories: e.categories?.[0],
-  }));
-
-  const { nodes, links, totalIncome, totalExpense } = prepareSankeyData(flatIncomes, flatExpenses);
-
-  const biggestExpense = flatExpenses.reduce((max, expense) =>
-    (expense.amount || 0) > (max.amount || 0) ? expense : max,
-    { amount: 0, categories: { name: 'N/A', color: '#71717a' } }
+  const biggestExpense = expenses.reduce(
+    (max, expense) => (expense.amount > max.amount ? expense : max),
+    defaultExpense,
   );
 
   return (
-    <AnalysisView 
-      data={{ nodes, links }} 
+    <AnalysisView
+      data={{ nodes, links }}
       currentMonth={startDate}
       totalIncome={totalIncome}
       totalExpense={totalExpense}
       biggestExpense={{
-        name: biggestExpense.categories?.name ?? 'N/A',
-        amount: biggestExpense.amount
+        name:
+          biggestExpense.categories?.name ?? SANKEY_NODE_NAMES.NOT_APPLICABLE,
+        amount: biggestExpense.amount,
       }}
     />
   );
