@@ -81,11 +81,15 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
-type PageProps = {
-  searchParams: { [key: string]: string | string[] | undefined };
-};
+//type PageProps = {
+//  searchParams: { [key: string]: string | string[] | undefined };
+//};
 
-export default async function AnalysisPage({ searchParams }: PageProps) {
+export default async function AnalysisPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
