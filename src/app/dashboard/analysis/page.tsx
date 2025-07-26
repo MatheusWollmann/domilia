@@ -5,21 +5,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AnalysisView from './AnalysisView';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
-
-type Category = {
-  name: string;
-  color?: string;
-};
-
-type Income = {
-  amount: number;
-  categories?: Category;
-};
-
-type Expense = {
-  amount: number;
-  categories?: Category;
-};
+import { Income, Expense } from '@/types/database.types';
 
 // A função prepareSankeyData permanece a mesma
 const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
@@ -94,13 +80,13 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
-type AnalysisPageProps = {
+export default async function AnalysisPage({
+  searchParams,
+}: {
   searchParams?: {
     [key: string]: string | string[] | undefined;
   };
-};
-
-export default async function AnalysisPage({ searchParams }: AnalysisPageProps) {
+}) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
