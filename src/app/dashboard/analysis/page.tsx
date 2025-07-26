@@ -82,7 +82,6 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
 };
 
 type PageProps = {
-  params: { [key: string]: string };
   searchParams: { [key: string]: string | string[] | undefined };
 };
 
