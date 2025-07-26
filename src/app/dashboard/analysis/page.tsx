@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import AnalysisView from './AnalysisView';
 import { startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Income, Expense } from '@/types/database.types';
+import { SANKEY_NODE_NAMES, SANKEY_NODE_COLORS } from '@/lib/constants';
 
 // A função prepareSankeyData permanece a mesma
 const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
@@ -28,13 +29,13 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
     return { nodes: [], links: [], totalIncome, totalExpense };
   }
   
-  const receitaBrutaNodeIndex = addNode('Receita Bruta', '#22c55e');
+  const receitaBrutaNodeIndex = addNode(SANKEY_NODE_NAMES.GROSS_INCOME, SANKEY_NODE_COLORS.GROSS_INCOME);
 
   incomes.forEach(income => {
     if (income.amount > 0) {
       const sourceNodeIndex = addNode(
-        income.categories?.name || 'Outras Receitas',
-        income.categories?.color || '#82ca9d'
+        income.categories?.name || SANKEY_NODE_NAMES.OTHER_INCOMES,
+        income.categories?.color || SANKEY_NODE_COLORS.OTHER_INCOMES
       );
       links.push({
         source: sourceNodeIndex,
@@ -45,7 +46,7 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   });
 
   if (totalExpense > 0) {
-    const despesasTotaisNodeIndex = addNode('Despesas Totais', '#ef4444');
+    const despesasTotaisNodeIndex = addNode(SANKEY_NODE_NAMES.TOTAL_EXPENSES, SANKEY_NODE_COLORS.TOTAL_EXPENSES);
     links.push({
       source: receitaBrutaNodeIndex,
       target: despesasTotaisNodeIndex,
@@ -55,8 +56,8 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
     expenses.forEach(expense => {
       if (expense.amount > 0) {
         const targetNodeIndex = addNode(
-          expense.categories?.name || 'Outras Despesas',
-          expense.categories?.color || '#ff8042'
+          expense.categories?.name || SANKEY_NODE_NAMES.OTHER_EXPENSES,
+          expense.categories?.color || SANKEY_NODE_COLORS.OTHER_EXPENSES
         );
         links.push({
           source: despesasTotaisNodeIndex,
@@ -69,7 +70,7 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   
   const savings = totalIncome - totalExpense;
   if (savings > 0) {
-    const savingsNodeIndex = addNode('Sobra do Mês', '#8884d8');
+    const savingsNodeIndex = addNode(SANKEY_NODE_NAMES.MONTHLY_SAVINGS, SANKEY_NODE_COLORS.MONTHLY_SAVINGS);
     links.push({
       source: receitaBrutaNodeIndex,
       target: savingsNodeIndex,
@@ -80,13 +81,12 @@ const prepareSankeyData = (incomes: Income[], expenses: Expense[]) => {
   return { nodes, links, totalIncome, totalExpense };
 };
 
-export default async function AnalysisPage({
-  searchParams,
-}: {
-  searchParams?: {
-    [key: string]: string | string[] | undefined;
-  };
-}) {
+type PageProps = {
+  params: { [key: string]: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+};
+
+export default async function AnalysisPage({ searchParams }: PageProps) {
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
