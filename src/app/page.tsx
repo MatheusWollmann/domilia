@@ -1,33 +1,18 @@
 // src/app/page.tsx
-'use client'
-import { useEffect, useCallback } from 'react' // 1. Importar useCallback
-import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
-export default function Home() {
-  const router = useRouter()
+// Força a verificação da sessão no servidor a cada requisição
+export const dynamic = 'force-dynamic';
 
-  // 2. Envolver a função com useCallback
-  const checkUser = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    if (user) {
-      router.push('/dashboard')
-    } else {
-      router.push('/login')
-    }
-  }, [router]) // 3. Adicionar as dependências da própria função (router)
+export default async function Home() {
+  const supabase = createServerComponentClient({ cookies });
+  const { data: { session } } = await supabase.auth.getSession();
 
-  useEffect(() => {
-    checkUser()
-  }, [checkUser]) // 4. Adicionar a função memorizada às dependências do useEffect
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="flex flex-col items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-gray-600">Carregando...</p>
-      </div>
-    </div>
-  )
+  if (session) {
+    redirect('/dashboard');
+  } else {
+    redirect('/login');
+  }
 }

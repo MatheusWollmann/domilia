@@ -64,13 +64,17 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
         const dataToSave = { ...data, amount: amountAsNumber, day_of_month: data.frequency === 'monthly' ? data.day_of_month : null, day_of_week: data.frequency === 'weekly' ? data.day_of_week : null, };
 
         if (editing) {
-            const { data: updated, error } = await supabase.from('recurring_transactions').update(dataToSave).eq('id', editing.id).select('*, categories(name, icon)').single();
+            const { data: updated, error } = await supabase.from('transactiones_recurrentes').update(dataToSave).eq('id', editing.id).select('*, categoriae(name, icon, color)').single<RecurringTransaction>();
             if (error) throw error;
-            setRecurring(prev => prev.map(r => r.id === updated.id ? updated : r));
+            if (updated) {
+                setRecurring(prev => prev.map(r => r.id === updated.id ? updated : r));
+            }
         } else {
-            const { data: created, error } = await supabase.from('recurring_transactions').insert(dataToSave).select('*, categories(name, icon)').single();
+            const { data: created, error } = await supabase.from('transactiones_recurrentes').insert(dataToSave).select('*, categoriae(name, icon, color)').single<RecurringTransaction>();
             if (error) throw error;
-            setRecurring(prev => [...prev, created].sort((a,b) => a.description.localeCompare(b.description)));
+            if (created) {
+                setRecurring(prev => [...prev, created].sort((a,b) => a.description.localeCompare(b.description)));
+            }
         }
         closeModal();
     } catch (e) {
@@ -81,7 +85,7 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
   
   const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza?')) return;
-    const { error } = await supabase.from('recurring_transactions').delete().eq('id', id);
+    const { error } = await supabase.from('transactiones_recurrentes').delete().eq('id', id);
     if (error) {
       alert('Não foi possível excluir a conta.');
     } else {
@@ -104,10 +108,10 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
             {recurring.length > 0 ? recurring.map(item => (
                 <div key={item.id} className="flex items-center justify-between p-3 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50">
                     <div className="flex items-center gap-3">
-                        <span className={`text-xl ${item.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>{item.categories?.icon || '🔁'}</span>
+                        <span className={`text-xl ${item.type === 'expense' ? 'text-red-500' : 'text-green-500'}`}>{item.categoriae?.icon || '🔁'}</span>
                         <div>
                             <p className="font-medium">{item.description}</p>
-                            <p className="text-sm text-gray-500">{item.categories?.name}</p>
+                            <p className="text-sm text-gray-500">{item.categoriae?.name}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">

@@ -53,13 +53,17 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
       const dataToSave = { name: data.name, type: data.type, icon: data.icon, color: data.color, budget: data.type === 'expense' ? budgetAsNumber : null, };
 
       if (editingCategory) {
-        const { data: updatedCategory, error } = await supabase.from('categories').update(dataToSave).eq('id', editingCategory.id).select().single();
+        const { data: updatedCategory, error } = await supabase.from('categoriae').update(dataToSave).eq('id', editingCategory.id).select().single<Category>();
         if (error) throw error;
-        setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+        if (updatedCategory) {
+          setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+        }
       } else {
-        const { data: newCategory, error } = await supabase.from('categories').insert(dataToSave).select().single();
+        const { data: newCategory, error } = await supabase.from('categoriae').insert(dataToSave).select().single<Category>();
         if (error) throw error;
-        setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
+        if (newCategory) {
+          setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
+        }
       }
       closeModal();
     } catch (e) {
@@ -70,7 +74,7 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Tem certeza?')) return;
-    const { error } = await supabase.from('categories').delete().eq('id', id);
+    const { error } = await supabase.from('categoriae').delete().eq('id', id);
     if (error) {
       alert('Não foi possível excluir a categoria.');
     } else {
