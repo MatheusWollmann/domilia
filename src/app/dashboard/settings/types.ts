@@ -2,19 +2,18 @@
 
 export type Category = {
   id: string;
-  user_id: string;
+  domus_id: string;
   name: string;
   type: 'expense' | 'income';
   icon: string | null;
   color: string | null;
   budget: number | null;
   created_at: string;
-  updated_at: string;
 };
 
 export type RecurringTransaction = {
   id: string;
-  user_id: string;
+  domus_id: string;
   description: string;
   amount: number;
   type: 'expense' | 'income';
@@ -31,4 +30,24 @@ export type RecurringTransaction = {
     icon: string | null;
     color: string | null;
   } | null;
+};
+
+export type DomusMember = {
+  user_id: string;
+  role: 'owner' | 'member';
+  users: {
+    id: string;
+    email: string | null;
+    raw_user_meta_data: {
+      full_name: string | null;
+      avatar_url: string | null;
+    } | null;
+  } | null;
+};
+
+export type DomusInvitation = {
+  id: string;
+  invitee_email: string;
+  status: 'pending' | 'accepted' | 'declined';
+  created_at: string;
 };

@@ -28,7 +28,9 @@ export async function getMonthlyTransactions(
   const commonQuery = (table: 'incomes' | 'expenses') =>
     supabase
       .from(table)
-      .select('amount, categories(name, color)')
+      // Corrigido: O nome da tabela de categorias é 'categoriae'.
+      // Usamos um alias para que o resultado continue sendo 'categories' e se alinhe aos tipos existentes.
+      .select('amount, categories:categoriae(name, color)')
       .eq('user_id', user.id)
       .gte('date', startDate.toISOString())
       .lte('date', endDate.toISOString());

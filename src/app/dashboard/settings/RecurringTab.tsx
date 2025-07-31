@@ -30,9 +30,10 @@ interface RecurringTabProps {
   initialRecurring: RecurringTransaction[];
   expenseCategories: Category[];
   incomeCategories: Category[];
+  domusId: string;
 }
 
-export default function RecurringTab({ initialRecurring, expenseCategories, incomeCategories }: RecurringTabProps) {
+export default function RecurringTab({ initialRecurring, expenseCategories, incomeCategories, domusId }: RecurringTabProps) {
   const [recurring, setRecurring] = useState(initialRecurring);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
@@ -61,16 +62,18 @@ export default function RecurringTab({ initialRecurring, expenseCategories, inco
   const onSubmit: SubmitHandler<RecurringFormData> = async (data) => {
     try {
         const amountAsNumber = parseFloat(data.amount.replace(',', '.'));
-        const dataToSave = { ...data, amount: amountAsNumber, day_of_month: data.frequency === 'monthly' ? data.day_of_month : null, day_of_week: data.frequency === 'weekly' ? data.day_of_week : null, };
 
         if (editing) {
+            const dataToSave = { ...data, amount: amountAsNumber, day_of_month: data.frequency === 'monthly' ? data.day_of_month : null, day_of_week: data.frequency === 'weekly' ? data.day_of_week : null, };
             const { data: updated, error } = await supabase.from('transactiones_recurrentes').update(dataToSave).eq('id', editing.id).select('*, categoriae(name, icon, color)').single<RecurringTransaction>();
             if (error) throw error;
             if (updated) {
                 setRecurring(prev => prev.map(r => r.id === updated.id ? updated : r));
             }
         } else {
-            const { data: created, error } = await supabase.from('transactiones_recurrentes').insert(dataToSave).select('*, categoriae(name, icon, color)').single<RecurringTransaction>();
+            // Ao criar, precisamos associar à domus_id
+            const dataToInsert = { ...data, domus_id: domusId, amount: amountAsNumber, day_of_month: data.frequency === 'monthly' ? data.day_of_month : null, day_of_week: data.frequency === 'weekly' ? data.day_of_week : null, };
+            const { data: created, error } = await supabase.from('transactiones_recurrentes').insert(dataToInsert).select('*, categoriae(name, icon, color)').single<RecurringTransaction>();
             if (error) throw error;
             if (created) {
                 setRecurring(prev => [...prev, created].sort((a,b) => a.description.localeCompare(b.description)));

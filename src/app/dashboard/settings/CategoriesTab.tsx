@@ -21,9 +21,10 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 
 interface CategoriesTabProps {
   initialCategories: Category[];
+  domusId: string;
 }
 
-export default function CategoriesTab({ initialCategories }: CategoriesTabProps) {
+export default function CategoriesTab({ initialCategories, domusId }: CategoriesTabProps) {
   const [categories, setCategories] = useState(initialCategories);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -50,16 +51,19 @@ export default function CategoriesTab({ initialCategories }: CategoriesTabProps)
   const onSubmit: SubmitHandler<CategoryFormData> = async (data) => {
     try {
       const budgetAsNumber = data.budget && data.budget.trim() !== '' ? Number(data.budget.replace(',', '.')) : null;
-      const dataToSave = { name: data.name, type: data.type, icon: data.icon, color: data.color, budget: data.type === 'expense' ? budgetAsNumber : null, };
 
       if (editingCategory) {
-        const { data: updatedCategory, error } = await supabase.from('categoriae').update(dataToSave).eq('id', editingCategory.id).select().single<Category>();
+        // Ao editar, não precisamos do domus_id, pois a política de RLS já garante a segurança.
+        const dataToUpdate = { name: data.name, type: data.type, icon: data.icon, color: data.color, budget: data.type === 'expense' ? budgetAsNumber : null };
+        const { data: updatedCategory, error } = await supabase.from('categoriae').update(dataToUpdate).eq('id', editingCategory.id).select().single<Category>();
         if (error) throw error;
         if (updatedCategory) {
           setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
         }
       } else {
-        const { data: newCategory, error } = await supabase.from('categoriae').insert(dataToSave).select().single<Category>();
+        // Ao criar, precisamos associar a nova categoria à domus_id do usuário.
+        const dataToInsert = { domus_id: domusId, name: data.name, type: data.type, icon: data.icon, color: data.color, budget: data.type === 'expense' ? budgetAsNumber : null };
+        const { data: newCategory, error } = await supabase.from('categoriae').insert(dataToInsert).select().single<Category>();
         if (error) throw error;
         if (newCategory) {
           setCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
