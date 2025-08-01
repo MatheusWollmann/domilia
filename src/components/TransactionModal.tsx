@@ -1,5 +1,4 @@
-// src/components/TransactionModal.tsx
-'use client'
+'use client';
 import React, { useState, useEffect } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

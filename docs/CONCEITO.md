@@ -32,7 +32,7 @@ O projeto já superou a fase de Produto Mínimo Viável (MVP) e conta com um nú
   - Página de configurações robusta com interface de abas.
   - CRUD completo para categorias personalizadas de receitas e despesas, com orçamento opcional para despesas.
   - CRUD completo para contas recorrentes (receitas e despesas), permitindo automatizar lançamentos futuros.
-
+- **Implementar sistema de 'Domus' (Casas) compartilhadas:** Permitir que múltiplos usuários acessem e gerenciem o mesmo conjunto de dados.
 ---
 
 ## 3. Stack Tecnológica
@@ -47,7 +47,7 @@ O projeto já superou a fase de Produto Mínimo Viável (MVP) e conta com um nú
 ## 4. Roadmap Futuro (Próximos Passos)
 
 ### Curto Prazo:
-- **Implementar sistema de 'Domus' (Casas) compartilhadas:** Permitir que múltiplos usuários acessem e gerenciem o mesmo conjunto de dados.
+
 - **Módulo de Tarefas Domésticas:** Desenvolver a funcionalidade principal para criar, atribuir e marcar tarefas domésticas como concluídas.
 - **Lançamento Automático de Recorrentes:** Criar um mecanismo (provavelmente via Edge Functions da Supabase) para lançar as contas recorrentes automaticamente nas datas corretas.
 

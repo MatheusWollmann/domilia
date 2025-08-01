@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Settings, LogOut, ArrowRightLeft } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/analysis', label: 'Análise', icon: BarChart3 },
+  { href: '/dashboard/transactions', label: 'Lançamentos', icon: ArrowRightLeft },
   { href: '/dashboard/settings', label: 'Ajustes', icon: Settings },
 ];
 

@@ -51,3 +51,15 @@ export type DomusInvitation = {
   status: 'pending' | 'accepted' | 'declined';
   created_at: string;
 };
+
+export type UnifiedMember = {
+  type: 'member';
+  userId: string;
+  email: string;
+  fullName: string | null;
+  role: 'owner' | 'member';
+} | {
+  type: 'invitation';
+  invitationId: string;
+  email: string;
+};

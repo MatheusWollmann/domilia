@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -9,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 // Tipos mais explícitos para os dados do Supabase
 type TransactionDB = { id: string; description: string; amount: number; date: string; type: 'income' | 'expense'; category_id: string; categories: { id: string; name: string; icon: string | null; color: string | null; } | null; };
-type RecurringTransactionDB = TransactionDB & { frequency: 'weekly' | 'monthly' | 'yearly'; day_of_month: number | null; day_of_week: number | null; start_date: string; end_date: string | null; };
+type RecurringTransactionDB = { id: string; description: string; amount: number; type: 'income' | 'expense'; category_id: string; frequency: 'weekly' | 'monthly' | 'yearly'; day_of_month: number | null; day_of_week: number | null; start_date: string; end_date: string | null; categories: { id: string; name: string; icon: string | null; color: string | null; } | null; };
 
 const generateTransactionsFromRecurring = (recurringItems: RecurringTransactionDB[], startDate: Date, endDate: Date): TransactionWithCategory[] => {
   const generated: TransactionWithCategory[] = [];
@@ -43,25 +42,60 @@ const generateTransactionsFromRecurring = (recurringItems: RecurringTransactionD
 };
 
 export default async function DashboardPage() {
+  console.log('--- [DashboardPage] Iniciando busca de dados no servidor ---');
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
+
+  console.log(`[DashboardPage] Usuário autenticado: ${user.id}`);
+
+  // 1. Encontrar a "Domus" do usuário
+  const { data: domusUser, error: domusUserError } = await supabase
+    .from('domus_membra')
+    .select('domus_id')
+    .eq('user_id', user.id)
+    .single();
+
+  if (domusUserError) {
+    console.error('[DashboardPage] Erro ao buscar domus_membra:', domusUserError.message);
+    return <div>Ocorreu um erro ao carregar os dados da sua casa.</div>;
+  }
+
+  if (!domusUser) {
+    console.log('[DashboardPage] Usuário não pertence a nenhuma casa.');
+    return <div>Você ainda não faz parte de nenhuma casa. Crie uma ou aceite um convite.</div>;
+  }
+
+  const { domus_id } = domusUser;
+  console.log(`[DashboardPage] Usuário pertence à Domus ID: ${domus_id}`);
 
   const now = new Date();
   const startDate = startOfMonth(now);
   const endDate = endOfMonth(now);
 
+  // 2. Buscar dados usando os nomes de tabela e IDs corretos
   const [incomesResult, expensesResult, categoriesResult, recurringResult] = await Promise.all([
-    supabase.from('incomes').select('*, categories (id, name, icon, color)').eq('user_id', user.id).gte('date', startDate.toISOString()).lte('date', endDate.toISOString()),
-    supabase.from('expenses').select('*, categories (id, name, icon, color, budget)').eq('user_id', user.id).gte('date', startDate.toISOString()).lte('date', endDate.toISOString()),
-    supabase.from('categories').select('*').eq('user_id', user.id),
-    supabase.from('recurring_transactions').select('*, categories (id, name, icon, color)').eq('user_id', user.id)
+    // 'incomes' e 'expenses' usam user_id, conforme seu schema
+    supabase.from('incomes').select('*, categories:categoriae (id, name, icon, color)').eq('user_id', user.id).gte('date', startDate.toISOString()).lte('date', endDate.toISOString()),
+    supabase.from('expenses').select('*, categories:categoriae (id, name, icon, color, budget)').eq('user_id', user.id).gte('date', startDate.toISOString()).lte('date', endDate.toISOString()),
+    
+    // CORREÇÃO: Usando 'categoriae' e 'domus_id'
+    supabase.from('categoriae').select('*').eq('domus_id', domus_id),
+    
+    // CORREÇÃO: Usando 'transactiones_recurrentes' e 'domus_id'
+    supabase.from('transactiones_recurrentes').select('*, categories:categoriae (id, name, icon, color)').eq('domus_id', domus_id)
   ]);
+
+  if (categoriesResult.error) {
+    console.error('[DashboardPage] Erro ao buscar categorias (categoriae):', categoriesResult.error.message);
+  }
 
   const oneOffIncomes: TransactionDB[] = incomesResult.data || [];
   const oneOffExpenses: TransactionDB[] = expensesResult.data || [];
   const allCategories: Category[] = categoriesResult.data || [];
   const recurringTransactions = (recurringResult.data as RecurringTransactionDB[]) || [];
+
+  console.log(`[DashboardPage] Busca finalizada. Total de categorias encontradas: ${allCategories.length}`);
 
   const generatedRecurring = generateTransactionsFromRecurring(recurringTransactions, startDate, endDate);
   
@@ -79,10 +113,10 @@ export default async function DashboardPage() {
   const balance = totalIncomes - totalExpenses;
 
   const expensesByCategory = allMonthTransactions
-    .filter((t): t is TransactionDB => t.type === 'expense')
+    .filter((t): t is TransactionDB => t.type === 'expense' && t.categories != null)
     .reduce<Record<string, { value: number; color: string }>>((acc, expense) => {
-      const categoryName = expense.categories?.name || 'Sem Categoria';
-      const categoryColor = expense.categories?.color || '#8884d8';
+      const categoryName = expense.categories!.name;
+      const categoryColor = expense.categories!.color || '#8884d8';
       if (!acc[categoryName]) { acc[categoryName] = { value: 0, color: categoryColor }; }
       acc[categoryName].value += expense.amount;
       return acc;
@@ -121,5 +155,5 @@ export default async function DashboardPage() {
       incomeCategories={incomeCategories}
       budgetsData={budgetsData}
     />
-  )
+  );
 }
