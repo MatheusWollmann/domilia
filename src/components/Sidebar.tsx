@@ -1,12 +1,15 @@
+// src/components/Sidebar.tsx
 'use client';
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, BarChart3, Settings, LogOut, ArrowRightLeft } from 'lucide-react';
+// Adicionado ClipboardList
+import { LayoutDashboard, BarChart3, Settings, LogOut, ArrowRightLeft, ClipboardList } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/tasks', label: 'Tarefas', icon: ClipboardList }, // <-- ADICIONADO
   { href: '/dashboard/analysis', label: 'Análise', icon: BarChart3 },
   { href: '/dashboard/transactions', label: 'Lançamentos', icon: ArrowRightLeft },
   { href: '/dashboard/settings', label: 'Ajustes', icon: Settings },
@@ -30,7 +33,14 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 px-4 py-6 space-y-2">
         {navItems.map((item) => (
-          <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${pathname === item.href ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'}`}>
+          <Link 
+            key={item.href} 
+            href={item.href} 
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors ${
+              // Lógica para destacar o link ativo
+              pathname === item.href ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-white' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white'
+            }`}
+          >
             <item.icon size={20} />
             <span className="font-medium">{item.label}</span>
           </Link>

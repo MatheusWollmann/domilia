@@ -6,18 +6,18 @@ import { startOfMonth, parseISO } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
-// A função da página agora usa uma tipagem mais genérica para os searchParams,
-// que é a forma recomendada para evitar o erro.
+// Esta é a Page (Server Component). A única prop que ela pode receber da estrutura do Next.js é `searchParams`.
 export default async function TransactionsPage({
   searchParams,
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
+  // 1. A busca de dados (usuário, transações, etc.) acontece aqui, no servidor.
   const supabase = createServerComponentClient({ cookies });
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) { redirect('/login'); }
 
-  // 1. Encontrar a "Domus" do usuário (lógica que já funciona no seu dashboard)
+  // Busca a "Domus" do usuário
   const { data: domusUser, error: domusUserError } = await supabase
     .from('domus_membra')
     .select('domus_id')
@@ -31,12 +31,12 @@ export default async function TransactionsPage({
 
   const { domus_id } = domusUser;
 
-  // 2. CORREÇÃO: Acessando o parâmetro 'month' de forma segura
+  // Processa o mês atual a partir dos searchParams
   const monthParam = searchParams?.month;
   const selectedMonth = typeof monthParam === 'string' ? parseISO(monthParam) : new Date();
   const startDate = startOfMonth(selectedMonth);
 
-  // 3. Buscar dados usando os nomes de tabela e IDs corretos
+  // Faz todas as buscas de dados necessárias para a página
   const [
     expensesResult, 
     incomesResult, 
@@ -54,6 +54,7 @@ export default async function TransactionsPage({
   const recurringRules = recurringResult.data || [];
   const categories = categoriesResult.data || [];
   
+  // 2. Os dados buscados e processados são então passados como props para o Client Component abaixo.
   return (
     <TransactionsView 
       user={user}

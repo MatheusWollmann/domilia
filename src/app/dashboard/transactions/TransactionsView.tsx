@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO, eachDayOfInterval, getDay, getDate, getMonth, isToday, isYesterday, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { User } from '@supabase/supabase-js';
 
 // --- Tipos ---
 type Transaction = { id: string; description: string; amount: number; date: string; category_id: string; type: 'income' | 'expense'; };
@@ -15,6 +16,7 @@ type Category = { id: string; name: string; icon: string | null; color: string |
 type CombinedTransaction = Transaction & { category: Category | undefined; isRecurring: boolean; };
 
 interface TransactionsViewProps {
+  user: User;
   oneOffExpenses: Transaction[];
   oneOffIncomes: Transaction[];
   recurringRules: RecurringRule[];
