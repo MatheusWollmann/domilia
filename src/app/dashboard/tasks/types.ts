@@ -26,8 +26,7 @@ export type Task = {
   id: string;
   nome: string;
   estado: 'A Fazer' | 'Em Progresso' | 'Concluído';
-  data_limite: string | null;
-  // Supabase aninha os resultados de joins em propriedades com o nome da relação
+  deadline: string | null; // CORREÇÃO: 'prazo' alterado para 'deadline'
   categoria: TaskCategory | null;
   atribuido: TaskAssignee | null;
 };

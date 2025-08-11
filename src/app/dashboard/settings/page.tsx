@@ -4,7 +4,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import SettingsTabs from './SettingsTabs';
-import { type Category, type RecurringTransaction, type DomusMember, type DomusInvitation, type UnifiedMember } from './types';
+import { type Category, type RecurringTransaction, type DomusMember, type DomusInvitation } from './types';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,22 +68,6 @@ export default async function SettingsPage() {
     }
   })) as DomusMember[];
   const invitations = (invitationsRpcResult.data || []) as DomusInvitation[];
-  
-  // Unificando as listas para a nova interface
-  const unifiedList: UnifiedMember[] = [
-    ...members.map(m => ({
-      type: 'member' as const,
-      userId: m.user_id,
-      email: m.users?.email || '',
-      fullName: m.users?.raw_user_meta_data?.full_name || null,
-      role: m.role,
-    })),
-    ...invitations.map(i => ({
-      type: 'invitation' as const,
-      invitationId: i.id,
-      email: i.invitee_email,
-    }))
-  ];
 
   return (
     <SettingsTabs 

@@ -1,28 +1,35 @@
 // src/app/dashboard/tasks/TasksView.tsx
 'use client';
 
+import React, { useState } from 'react';
 import useSWR from 'swr';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 import TaskList from '@/components/tasks/TaskList';
+import TaskModal from '@/components/tasks/TaskModal';
 import { Task } from './types';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { type DomusMember } from '../settings/types';
+import { AlertTriangle, Loader2, ListTodo, PlusCircle } from 'lucide-react';
 
-// Chave para o cache do SWR. Usamos um objeto para facilitar a passagem de parâmetros no futuro.
 const SWR_KEY = { scope: 'tasks' };
 
-// O "fetcher" é a função que o SWR usará para buscar os dados.
-// Ela recebe a chave (SWR_KEY) como argumento.
+// O tipo de categoria que o modal usa
+type ModalCategory = {
+  id: string;
+  nome: string;
+}
+
 const fetcher = async (): Promise<Task[]> => {
   const supabase = createClientComponentClient();
+  
   const { data, error } = await supabase
     .from('tarefas')
     .select(`
       id,
       nome,
       estado,
-      data_limite,
+      deadline,
       categoria:tarefa_categorias (nome, cor),
-      atribuido:profiles (full_name, avatar_url)
+      atribuido:profiles!tarefas_atribuido_a_id_fkey (full_name, avatar_url)
     `)
     .order('created_at', { ascending: false });
 
@@ -31,41 +38,31 @@ const fetcher = async (): Promise<Task[]> => {
     throw new Error(error.message);
   }
 
-  // Se não houver dados, retorna um array vazio.
   if (!data) {
     return [];
   }
   
-  // ✅ CORREÇÃO APLICADA AQUI
-  // Normaliza os dados para corresponder ao tipo `Task[]`. O Supabase retorna joins
-  // como arrays por padrão. Transformamos `categoria: [{...}]` em `categoria: {...}`
-  // e `atribuido: [{...}]` em `atribuido: {...}`.
   const normalizedTasks = data.map(task => ({
     ...task,
-    categoria: task.categoria?.[0] ?? null,
-    atribuido: task.atribuido?.[0] ?? null,
+    categoria: Array.isArray(task.categoria) ? task.categoria[0] ?? null : task.categoria,
+    atribuido: Array.isArray(task.atribuido) ? task.atribuido[0] ?? null : task.atribuido,
   }));
 
-  return normalizedTasks;
+  return normalizedTasks as Task[];
 };
 
 interface TasksViewProps {
   initialTasks: Task[];
+  categories: ModalCategory[];
+  members: DomusMember[];
 }
 
-/**
- * Componente TasksView
- * Orquestra a busca de dados com SWR e renderiza os estados de UI
- * (loading, error, success) para a lista de tarefas.
- */
-export default function TasksView({ initialTasks }: TasksViewProps) {
+const TasksView: React.FC<TasksViewProps> = ({ initialTasks, categories, members }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const { data: tasks, error, isLoading } = useSWR(SWR_KEY, fetcher, {
-    // `fallbackData` é usado para a renderização inicial, vindo do Server Component.
-    // Isso evita um piscar na tela e melhora o SEO/performance.
     fallbackData: initialTasks,
   });
 
-  // Estado de Carregamento
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -75,7 +72,6 @@ export default function TasksView({ initialTasks }: TasksViewProps) {
     );
   }
 
-  // Estado de Erro
   if (error) {
     return (
       <div className="text-center py-16 px-6 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
@@ -88,6 +84,38 @@ export default function TasksView({ initialTasks }: TasksViewProps) {
     );
   }
 
-  // Estado de Sucesso (com ou sem dados)
-  return <TaskList tasks={tasks || []} />;
+  return (
+    <>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center gap-3">
+            <ListTodo size={30} />
+            Quadro de Tarefas
+          </h1>
+          <p className="text-lg text-gray-500 dark:text-gray-400">
+            Organize e acompanhe as responsabilidades da casa.
+          </p>
+        </div>
+        <div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="w-full md:w-auto bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm">
+            <PlusCircle size={20} />
+            Nova Tarefa
+          </button>
+        </div>
+      </div>
+      
+      <TaskList tasks={tasks || []} />
+
+      <TaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)}
+        categories={categories}
+        members={members}
+      />
+    </>
+  );
 }
+
+export default TasksView;

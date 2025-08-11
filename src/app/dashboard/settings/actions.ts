@@ -94,6 +94,12 @@ export async function cancelInvitation(formData: FormData) {
     .delete()
     .eq('id', invitationId);
 
+  if (error) {
+    console.error('Erro ao cancelar convite:', error);
+
+    return;
+  }
+
   revalidatePath('/dashboard/settings');
 }
 

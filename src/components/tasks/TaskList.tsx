@@ -1,7 +1,8 @@
 // src/components/tasks/TaskList.tsx
 
-import TaskCard, { Task } from './TaskCard';
+import TaskCard from './TaskCard';
 import { ClipboardList } from 'lucide-react';
+import { type Task } from '@/app/dashboard/tasks/types';
 
 interface TaskListProps {
   tasks: Task[];
