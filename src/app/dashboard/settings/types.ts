@@ -52,6 +52,14 @@ export type DomusInvitation = {
   created_at: string;
 };
 
+export type TaskCategory = {
+  id: string;
+  domus_id: string;
+  nome: string;
+  cor: string;
+  created_at: string;
+};
+
 export type UnifiedMember = {
   type: 'member';
   userId: string;

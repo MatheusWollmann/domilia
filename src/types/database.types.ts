@@ -32,3 +32,10 @@ export type Expense = {
   amount: number;
   categories?: Category;
 };
+
+// Tipo para o perfil do usuário, combinando dados da tabela 'profiles' e do auth.user
+export type UserProfile = {
+  full_name: string | null;
+  avatar_url: string | null;
+  email: string;
+};

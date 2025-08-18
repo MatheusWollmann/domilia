@@ -4,15 +4,16 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 // Adicionado ClipboardList
-import { LayoutDashboard, BarChart3, Settings, LogOut, ArrowRightLeft, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Settings, LogOut, ArrowRightLeft, ClipboardList, User } from 'lucide-react';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/tasks', label: 'Tarefas', icon: ClipboardList }, // <-- ADICIONADO
+  { href: '/dashboard/tasks', label: 'Tarefas', icon: ClipboardList },
   { href: '/dashboard/analysis', label: 'Análise', icon: BarChart3 },
   { href: '/dashboard/transactions', label: 'Lançamentos', icon: ArrowRightLeft },
   { href: '/dashboard/settings', label: 'Ajustes', icon: Settings },
+  { href: '/dashboard/profile', label: 'Meu Perfil', icon: User }, // Added Profile link
 ];
 
 export default function Sidebar() {

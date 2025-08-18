@@ -10,15 +10,19 @@ import { Task } from './types';
 import { type DomusMember } from '../settings/types';
 import { AlertTriangle, Loader2, ListTodo, PlusCircle } from 'lucide-react';
 
-const SWR_KEY = { scope: 'tasks' };
-
 // O tipo de categoria que o modal usa
 type ModalCategory = {
   id: string;
   nome: string;
 }
 
-const fetcher = async (): Promise<Task[]> => {
+// A chave SWR agora inclui o domusId para garantir o re-fetch correto
+const getSWRKey = (domusId: string) => ({
+  scope: 'tasks',
+  domusId: domusId,
+});
+
+const fetcher = async ({ domusId }: { domusId: string }): Promise<Task[]> => {
   const supabase = createClientComponentClient();
   
   const { data, error } = await supabase
@@ -31,6 +35,7 @@ const fetcher = async (): Promise<Task[]> => {
       categoria:tarefa_categorias (nome, cor),
       atribuido:profiles!tarefas_atribuido_a_id_fkey (full_name, avatar_url)
     `)
+    .eq('domus_id', domusId) // FIX: Filter tasks by the user's household
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -55,11 +60,12 @@ interface TasksViewProps {
   initialTasks: Task[];
   categories: ModalCategory[];
   members: DomusMember[];
+  domusId: string; // FIX: Add domusId to props
 }
 
-const TasksView: React.FC<TasksViewProps> = ({ initialTasks, categories, members }) => {
+const TasksView: React.FC<TasksViewProps> = ({ initialTasks, categories, members, domusId }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { data: tasks, error, isLoading } = useSWR(SWR_KEY, fetcher, {
+  const { data: tasks, error, isLoading } = useSWR(getSWRKey(domusId), () => fetcher({ domusId }), {
     fallbackData: initialTasks,
   });
 

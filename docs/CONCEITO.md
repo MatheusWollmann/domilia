@@ -24,6 +24,7 @@ O projeto já superou a fase de Produto Mínimo Viável (MVP) e conta com um nú
   - Gráfico de pizza no dashboard para análise da distribuição de despesas por categoria.
 - **Gestão de Transações (CRUD Completo):**
   - Adição, visualização, edição e exclusão de receitas e despesas.
+- **Módulo de Tarefas Domésticas:** Funcionalidade para criar, atribuir e marcar tarefas domésticas como concluídas.
 - **Página de Relatórios Avançados:**
   - Navegação intuitiva por mês para análise detalhada.
   - Gráfico de barras comparativo da evolução de receitas vs. despesas nos últimos 6 meses.
@@ -33,6 +34,7 @@ O projeto já superou a fase de Produto Mínimo Viável (MVP) e conta com um nú
   - CRUD completo para categorias personalizadas de receitas e despesas, com orçamento opcional para despesas.
   - CRUD completo para contas recorrentes (receitas e despesas), permitindo automatizar lançamentos futuros.
 - **Implementar sistema de 'Domus' (Casas) compartilhadas:** Permitir que múltiplos usuários acessem e gerenciem o mesmo conjunto de dados.
+- **Gestão de Perfil de Usuário:** Permite ao usuário atualizar seu nome completo, e-mail e foto de perfil (upload de imagem), além de alterar sua senha.
 ---
 
 ## 3. Stack Tecnológica
@@ -48,7 +50,6 @@ O projeto já superou a fase de Produto Mínimo Viável (MVP) e conta com um nú
 
 ### Curto Prazo:
 
-- **Módulo de Tarefas Domésticas:** Desenvolver a funcionalidade principal para criar, atribuir e marcar tarefas domésticas como concluídas.
 - **Lançamento Automático de Recorrentes:** Criar um mecanismo (provavelmente via Edge Functions da Supabase) para lançar as contas recorrentes automaticamente nas datas corretas.
 
 ### Médio Prazo (Fase Alpha/Beta):

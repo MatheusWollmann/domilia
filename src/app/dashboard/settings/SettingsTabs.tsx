@@ -2,14 +2,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Tag, Repeat, Users } from 'lucide-react';
+import { Tag, Repeat, Users, ListTodo } from 'lucide-react'; // Adicionado ListTodo
 import CategoriesTab from './CategoriesTab';
 import RecurringTab from './RecurringTab';
 import MembersTab from './MembersTab';
-import { type Category, type RecurringTransaction, type DomusMember, type DomusInvitation } from './types';
+import TaskCategoriesTab from './TaskCategoriesTab'; // Importar o novo componente
+import { type Category, type RecurringTransaction, type DomusMember, type DomusInvitation, type TaskCategory } from './types'; // Adicionado TaskCategory
 
 interface SettingsTabsProps {
   initialCategories: Category[];
+  initialTaskCategories: TaskCategory[]; // Adicionado
   initialRecurring: RecurringTransaction[];
   initialMembers: DomusMember[];
   initialInvitations: DomusInvitation[];
@@ -19,13 +21,14 @@ interface SettingsTabsProps {
 
 export default function SettingsTabs({ 
   initialCategories, 
+  initialTaskCategories, // Adicionado
   initialRecurring, 
   initialMembers, 
   initialInvitations, 
   domusId,
   isOwner
 }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<'categories' | 'recurring' | 'members'>('categories');
+  const [activeTab, setActiveTab] = useState('categories');
 
   const expenseCategories = initialCategories.filter(c => c.type === 'expense');
   const incomeCategories = initialCategories.filter(c => c.type === 'income');
@@ -48,7 +51,18 @@ export default function SettingsTabs({
             }`}
           >
             <Tag size={18} />
-            Categorias
+            Categorias (Finanças)
+          </button>
+          <button
+            onClick={() => setActiveTab('task-categories')}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
+              activeTab === 'task-categories'
+                ? 'border-indigo-500 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300 dark:hover:border-gray-500'
+            }`}
+          >
+            <ListTodo size={18} />
+            Categorias (Tarefas)
           </button>
           <button
             onClick={() => setActiveTab('recurring')}
@@ -77,6 +91,7 @@ export default function SettingsTabs({
 
       <div>
         {activeTab === 'categories' && <CategoriesTab initialCategories={initialCategories} domusId={domusId} />}
+        {activeTab === 'task-categories' && <TaskCategoriesTab initialTaskCategories={initialTaskCategories} domusId={domusId} />}
         {activeTab === 'recurring' && <RecurringTab initialRecurring={initialRecurring} expenseCategories={expenseCategories} incomeCategories={incomeCategories} domusId={domusId} />}
         {activeTab === 'members' && <MembersTab initialMembers={initialMembers} initialInvitations={initialInvitations} domusId={domusId} isOwner={isOwner} />}
       </div>

@@ -44,15 +44,16 @@ export default async function TasksPage() {
         categoria:tarefa_categorias (nome, cor),
         atribuido:profiles!tarefas_atribuido_a_id_fkey (full_name, avatar_url)
       `)
+      .eq('domus_id', domusId) // FIX: Filter tasks by the user's household
       .order('created_at', { ascending: false }),
     supabase
       .from('tarefa_categorias')
       .select('id, nome')
       .eq('domus_id', domusId),
-    // ✅ CORREÇÃO 1: Adicionamos 'id' à query dos perfis (users)
+    // FIX: Correctly join domus_membra with profiles table
     supabase
       .from('domus_membra')
-      .select(`user_id, role, users:profiles (id, email, raw_user_meta_data)`)
+      .select('user_id, role, profiles(id, full_name, avatar_url)')
       .eq('domus_id', domusId)
   ]);
 
@@ -68,12 +69,28 @@ export default async function TasksPage() {
 
   const categories = (categoriesResult.data || []) as PageCategory[];
   
-  // ✅ CORREÇÃO 2: Normalizamos os dados dos membros para corresponder ao tipo DomusMember
-  const members = (membersResult.data || []).map(member => ({
-    ...member,
-    // Converte o array 'users' em um único objeto ou null
-    users: Array.isArray(member.users) ? (member.users[0] ?? null) : member.users
-  })) as DomusMember[];
+  const members = (membersResult.data || [])
+    .map(member => {
+      // Supabase may return a one-to-one join as a single object or an array
+      const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+
+      if (!profile) {
+        return null;
+      }
+      return {
+        user_id: member.user_id,
+        role: member.role,
+        users: {
+          id: profile.id,
+          email: null, // Email is not available in the profiles table
+          raw_user_meta_data: {
+            full_name: profile.full_name,
+            avatar_url: profile.avatar_url,
+          },
+        },
+      };
+    })
+    .filter(Boolean) as DomusMember[];
 
   return (
     <div className="space-y-8">
@@ -81,6 +98,7 @@ export default async function TasksPage() {
         initialTasks={initialTasks}
         categories={categories}
         members={members}
+        domusId={domusId}
       />
     </div>
   );
